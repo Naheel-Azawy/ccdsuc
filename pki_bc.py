@@ -1,3 +1,5 @@
+"""BlockChain PKI. Intefaces with the CA"""
+
 from pki              import PKI
 from pki_ca           import CA
 from sharing          import gen_keys_from, stringify_keys

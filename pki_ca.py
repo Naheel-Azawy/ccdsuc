@@ -1,3 +1,5 @@
+"""Certificate Authority. Based on Ethereum blockchain."""
+
 from web3 import Web3
 import json
 import os
@@ -7,6 +9,7 @@ CA_JSON = "./bcpki/build/contracts/CA.json"
 DEF_ADDR = "http://127.0.0.1:8545@0x3BdF8A6a7716D772A2cf7b6183678D005Ee00Ad9"
 
 class CA:
+    """Certificate Authority"""
     def __init__(self):
         env_addr              = os.getenv("ETH_ADDR") or DEF_ADDR
         env_addr              = env_addr.split("@")
@@ -14,6 +17,7 @@ class CA:
         self.contract_address = env_addr[1]
 
     def connect(self):
+        """Connect to the blockchain"""
         self.w3 = Web3(Web3.HTTPProvider(self.url))
         
         # the account we use is either from the env of the first account
@@ -42,9 +46,10 @@ class CA:
         return self.w3.isConnected()
 
     def gen_hash(cert):
-        # if `cert` is the hash, return it
-        # this allows passing either the hash or the cert
-        # itself in the functions below
+        """Generate a hash of the certificate dict.
+        If `cert` is the hash, return it.
+        This allows passing either the hash or the cert
+        itself in the functions below"""
         if isinstance(cert, str):
             return cert
         return hashlib.sha256((cert["valid_to"] +
@@ -53,6 +58,7 @@ class CA:
                               .encode()).hexdigest()
 
     def build_dicts(tuples):
+        """Translate arrays to tuples to arrays of dicts"""
         res = []
         for t in tuples:
             res.append({
@@ -67,6 +73,7 @@ class CA:
         return res
 
     def enroll(self, cert):
+        """Enroll a certificate"""
         tx_hash = self.contract.functions.enroll(CA.gen_hash(cert),
                                                  cert["valid_to"],
                                                  cert["public_key"],
@@ -75,20 +82,25 @@ class CA:
         return tx_hash.hex()
 
     def revoke(self, cert):
+        """Revoke a certificate. Pass the certificate dict or the hash"""
         tx_hash = self.contract.functions.revoke(CA.gen_hash(cert)).transact()
         tx_receipt = self.w3.eth.waitForTransactionReceipt(tx_hash)
         return tx_hash.hex()
 
     def verify(self, cert):
+        """Verify a certificate. Pass the certificate dict or the hash"""
         return self.contract.functions.verify(CA.gen_hash(cert)).call()
 
     def get_certs(self):
+        """Get valid certificates"""
         return CA.build_dicts(self.contract.functions.get_certs().call())
 
     def get_all_certs(self):
+        """Get all certificates including invalid ones"""
         return CA.build_dicts(self.contract.functions.get_all_certs().call())
 
     def get_crl(self):
+        """Get the Certificate Revocation List"""
         return CA.build_dicts(self.contract.functions.get_crl().call())
 
 def ca_test():

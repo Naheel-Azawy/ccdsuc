@@ -1,3 +1,5 @@
+"""Public Key Infrastructure base interface"""
+
 class PKI:
     """Public Key Infrastructure interface"""
     def init(self):
