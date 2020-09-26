@@ -29,6 +29,9 @@ class LDR(IoTDevice):
         return ["led-1"]
 
     def read_sensor(self):
+        """Calculate the resistance besed on RC circute timing.
+        Based on https://pimylifeup.com/raspberry-pi-light-sensor"""
+
         # define the darkest possible value
         darkest = 1000
 

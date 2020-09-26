@@ -1,5 +1,6 @@
 """The main interface to any IoT device"""
 
+from pki_bc           import BCPKI
 from tcp_client       import Server
 from sharing_tcp      import TCPAccessWrapper
 from sharing          import SharingUtility, gen_keys_from
@@ -13,23 +14,6 @@ import datetime
 
 def date():
     return str(datetime.datetime.now())
-
-class PKI:
-    """Public Key Infrastructure interface"""
-    def init(self):
-        pass
-
-    def get_key(self, device_id):
-        raise Exception("Not implemented")
-
-# TODO: implement the actual BCPKI
-class BCPKI(PKI):
-    """BlockChain PKI"""
-    def init(self):
-        pass
-
-    def get_key(self, device_id):
-        return gen_keys_from("123")["pub"]
 
 class IoTDevice:
     """The main interface to any IoT device.

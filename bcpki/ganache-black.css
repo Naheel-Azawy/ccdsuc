@@ -1,0 +1,4 @@
+.ShellContainer {
+    filter: invert(100%);
+    background-color: white;
+}
