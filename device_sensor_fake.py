@@ -11,7 +11,7 @@ class FakeSensor(IoTDevice):
                          device_type       = "sensor",
                          device_id         = "alice-sens",
                          update_period     = 1.5,
-                         log_count         = 5) # TODO
+                         log_count         = 5)
 
     def file_name(self):
         return self.device_id + ".file"

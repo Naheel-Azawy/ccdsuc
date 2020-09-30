@@ -28,7 +28,8 @@ class LED(IoTDevice):
     def file_name(self):
         return self.first_shared_file_name()
 
-    def write_actuator(self, value):
+    def write_actuator(self, values):
+        value = values[-1]
         value = int(value.decode())
         if value > 100:
             self.warning(f"input value larger than 100 ({value})")

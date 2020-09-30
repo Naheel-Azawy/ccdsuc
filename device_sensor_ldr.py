@@ -12,6 +12,7 @@ class LDR(IoTDevice):
                          device_type       = "sensor",
                          device_id         = "ldr-1",
                          update_period     = 2.5,
+                         log_count         = 3,
                          pin               = 17)
 
     def init(self):

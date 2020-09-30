@@ -14,7 +14,7 @@ class FakeActuator(IoTDevice):
     def file_name(self):
         return self.first_shared_file_name()
 
-    def write_actuator(self, value):
-        self.log(f"FAKE ACTUATOR WRITE ({value})")
+    def write_actuator(self, values):
+        self.log(f"FAKE ACTUATOR WRITE ({values})")
 
 FakeActuator().run()

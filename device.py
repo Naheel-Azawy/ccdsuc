@@ -100,12 +100,18 @@ class IoTDevice:
             if d.device_type == "sensor":
                 reading = d.read_sensor()
                 d.info(f"sending sensor reading {reading}")
-                reading = str(reading).encode()
-                d.aw.upload_file(d.su, f, reading)
+                reading = str(reading).encode()     # encode to utf-8
+                readings = d.aw.load_file(d.su, f)  # load the old file
+                readings = readings.split(b'\n')
+                readings.append(reading)            # add the new reading
+                readings = readings[-d.log_count:]  # last N elements
+                readings = b'\n'.join(readings)
+                d.aw.upload_file(d.su, f, readings) # upload the new file
             elif d.device_type == "actuator":
-                value = d.aw.load_file(d.su, f)
-                d.info(f"writing actuator value {value}")
-                d.write_actuator(value)
+                values = d.aw.load_file(d.su, f)
+                values = values.split(b'\n')
+                d.info(f"writing actuator value(s) {values}")
+                d.write_actuator(values)
             else:
                 raise Exception(f"Unknown device type {d.sevice_type}")
 
