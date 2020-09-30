@@ -200,6 +200,35 @@ def keys_test():
 def keys_caching_test():
     su = SharingUtility("alice", "abc", keys_cache="./keys-test.json")
 
+def pki_test():
+    from pki_bc import BCPKI
+    from Crypto.PublicKey import RSA
+    pki = BCPKI()
+    pki.init()
+    print("* Ceritificates before")
+    print(pki.list_devices())
+    print()
+
+    print("* Adding the device...")
+    pki.add_device("led-0", "deadbeef", "2077-01-01")
+    print()
+
+    print("* Ceritificates after")
+    print(pki.list_devices())
+    print()
+
+    print("* Getting the device key...")
+    key = pki.get_key("led-0").export_key("PEM").decode()
+    print(key)
+    print()
+
+    print("* Re-generating keys...")
+    new_key = stringify_keys(gen_keys_from("deadbeef"))["pub"]
+    print(new_key)
+
+    print("* Key is matching?")
+    print(new_key == key)
+
 if __name__ == "__main__":
     #tables_json_vs_pickle()
     #tables_test()
@@ -208,4 +237,5 @@ if __name__ == "__main__":
     #aes_test()
     #rsa_test()
     #keys_test()
-    keys_caching_test()
+    #keys_caching_test()
+    pki_test()

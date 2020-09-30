@@ -1,0 +1,4 @@
+* BlockChain PKI
+  - Start ~ganache~
+  - ~truffle migrate --compile-all --reset~
+  - Then do whatever

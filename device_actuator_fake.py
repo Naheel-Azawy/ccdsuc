@@ -9,7 +9,7 @@ class FakeActuator(IoTDevice):
                          device_passphrase = "123",
                          device_type       = "actuator",
                          device_id         = "bob-act",
-                         update_period     = 5)
+                         update_period     = 3)
 
     def file_name(self):
         return self.first_shared_file_name()

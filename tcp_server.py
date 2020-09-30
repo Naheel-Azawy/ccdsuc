@@ -5,7 +5,8 @@ import datetime
 import os
 
 VOLATILE = False
-PORT = 2010
+PORT = os.getenv("PORT") or 2010
+PORT = int(PORT)
 
 class FSInterface:
     def get(self, path: str):

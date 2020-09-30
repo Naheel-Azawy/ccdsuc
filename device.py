@@ -21,7 +21,8 @@ class IoTDevice:
     Note that the server ip and port will be replaced if ADDR env variable
     is provideded."""
     def __init__(self, server_ip, server_port, device_passphrase,
-                 device_type, device_id, update_period, **kwargs):
+                 device_type, device_id, update_period,
+                 log_count=1, **kwargs):
         if device_type not in ["actuator", "sensor"]:
             raise Exception(f"Unknown device type '{device_type}'")
 
@@ -46,6 +47,7 @@ class IoTDevice:
         self.pki = FakePKI()
 
         self.period = update_period
+        self.log_count = log_count
         self.running = False
 
         self.reading_file = None

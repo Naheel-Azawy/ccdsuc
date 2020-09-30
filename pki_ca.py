@@ -6,7 +6,8 @@ import os
 import hashlib
 
 CA_JSON = "./bcpki/build/contracts/CA.json"
-DEF_ADDR = "http://127.0.0.1:8545@0x3BdF8A6a7716D772A2cf7b6183678D005Ee00Ad9"
+#DEF_ADDR = "http://127.0.0.1:8545@0x3BdF8A6a7716D772A2cf7b6183678D005Ee00Ad9"
+DEF_ADDR = "http://127.0.0.1:8545@"
 
 class CA:
     """Certificate Authority"""
@@ -32,11 +33,11 @@ class CA:
 
         # if we don't have the contract address, we deploy it and get the address
         # https://ethereum.stackexchange.com/questions/12859/get-deployed-contract-from-web3
-        if self.contract_address is None:
-            CA            = w3.eth.contract(abi=abi, bytecode=bytecode)
+        if not self.contract_address:
+            CA            = self.w3.eth.contract(abi=abi, bytecode=bytecode)
             tx_hash       = CA.constructor().transact()
-            tx_receipt    = w3.eth.waitForTransactionReceipt(tx_hash)
-            contract_addr = tx_receipt.contractAddress
+            tx_receipt    = self.w3.eth.waitForTransactionReceipt(tx_hash)
+            self.contract_address = tx_receipt.contractAddress
             print(f"Contract deployed. Transaction hash = {tx_hash.hex()}")
 
         # create an instance of the contract
