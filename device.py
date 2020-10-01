@@ -1,7 +1,7 @@
 """The main interface to any IoT device"""
 
 from pki              import FakePKI
-from pki_bc           import BCPKI
+#from pki_bc           import BCPKI
 from tcp_client       import Server
 from sharing_tcp      import TCPAccessWrapper
 from sharing          import SharingUtility, gen_keys_from

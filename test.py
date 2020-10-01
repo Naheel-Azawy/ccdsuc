@@ -187,6 +187,10 @@ def rsa_test():
     print(f"done {time.time() - t}")
     print(f"dec = {dec}")
 
+def simple_keys_test():
+    keys = stringify_keys(gen_keys_from("123"))
+    print(keys["pub"])
+
 def keys_test():
     keys = gen_keys_from("passs")
     print(keys)
@@ -229,6 +233,24 @@ def pki_test():
     print("* Key is matching?")
     print(new_key == key)
 
+def server_test():
+    import os
+    import threading
+    from tcp_client import Server
+
+    threading.Thread(target=lambda: os.system("python3 ./tcp_server.py")) \
+             .start()
+    s = Server("127.0.0.1", 2010)
+    t = "foo.txt"
+    c = b"123 abc"
+    print(f"Setting {t} to {c}...")
+    print(s.set(t, c))
+    print(f"Getting {t}...")
+    got = s.get(t)
+    print(got)
+    print("Content {c} of {t} is equivalent:")
+    print(c == got)
+
 if __name__ == "__main__":
     #tables_json_vs_pickle()
     #tables_test()
@@ -238,4 +260,6 @@ if __name__ == "__main__":
     #rsa_test()
     #keys_test()
     #keys_caching_test()
-    pki_test()
+    #pki_test()
+    #simple_keys_test()
+    server_test()

@@ -5,10 +5,16 @@ import time
 
 class Server:
 
-    def __init__(self, ip, port, device):
+    def __init__(self, ip, port, device=None):
         self.addr = (ip, port)
         self.device = device
         self.fail_period = 10
+
+    def err(self, msg):
+        if self.device is not None:
+            self.device.error(msg)
+        else:
+            print(f"ERROR: {msg}")
 
     def connect(self):
         again = True
@@ -19,8 +25,8 @@ class Server:
                 again = False
                 return s
             except ConnectionRefusedError:
-                self.device.error("server connection refused. " +
-                                  f"Retrying in {self.fail_period} seconds...")
+                self.err("server connection refused. " +
+                         f"Retrying in {self.fail_period} seconds...")
                 time.sleep(self.fail_period)
         return None # unreachable
 
