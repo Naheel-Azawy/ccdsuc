@@ -1,7 +1,7 @@
 """The main interface to any IoT device"""
 
 from pki              import FakePKI
-from pki_bc           import BCPKI
+#from pki_bc           import BCPKI
 from tcp_client       import Server
 from sharing_tcp      import TCPAccessWrapper
 from sharing          import SharingUtility, gen_keys_from
@@ -43,8 +43,12 @@ class IoTDevice:
         self.su = SharingUtility(device_id, device_passphrase,
                                  access_wrapper=self.aw,
                                  keys_cache=os.getenv("HOME") + f"/{device_id}")
-        self.pki = BCPKI()
-        #self.pki = FakePKI()
+
+        try:
+            self.pki = BCPKI()
+        except NameError:
+            # if not imported, then we test with the fake one
+            self.pki = FakePKI()
 
         self.period = update_period
         self.log_count = log_count

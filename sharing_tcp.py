@@ -60,9 +60,17 @@ class TCPAccessWrapper(AccessWrapper):
     def load_file(self, su, file_name):
         data = self.server.get(file_name)
         if data is None: return None
-        iv = data[:AES.block_size]
-        key = su.key_gen(iv)
-        return AES_dec(data, key)
+        try:
+            # First, we try to decrypt generating the key, assuming
+            # that the file is ours
+            iv = data[:AES.block_size]
+            key = su.key_gen(iv)
+            return AES_dec(data, key)
+        except ValueError: #ValueError("Padding is incorrect.")
+            # If the above fails, this means that the file is not ours.
+            # So we try to get the key if it is shared with us
+            key = su.get_shared_file_key(file_name)
+            return AES_dec(data, key)
 
     def upload_file(self, su, file_name, new_data):
         data = self.server.get(file_name) # load
