@@ -84,5 +84,12 @@ if __name__ == "__main__":
         print(json.dumps(pki.ca.get_certs(), indent=2))
     elif cmd == "deploy":
         os.system("cd ./bcpki && truffle migrate --compile-all --reset")
+    elif cmd == "keys-pv":
+        if len(args) < 1: usage()
+        keys = stringify_keys(gen_keys_from(args[0]))
+        for k in keys:
+            print(k + ":")
+            print(keys[k])
+            print("")
     else:
         usage()
