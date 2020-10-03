@@ -20,8 +20,9 @@ class IoTDevice:
     """The main interface to any IoT device.
     Note that the server ip and port will be replaced if ADDR env variable
     is provideded."""
-    def __init__(self, server_ip, server_port, device_passphrase,
+    def __init__(self, device_passphrase,
                  device_type, device_id, update_period,
+                 server_ip="127.0.0.1", server_port=2010,
                  log_count=1, **kwargs):
         if device_type not in ["actuator", "sensor"]:
             raise Exception(f"Unknown device type '{device_type}'")

@@ -5,9 +5,7 @@ import random
 
 class FakeSensor(IoTDevice):
     def __init__(self):
-        super().__init__(server_ip         = "127.0.0.1",
-                         server_port       = 2010,
-                         device_passphrase = "123",
+        super().__init__(device_passphrase = "123",
                          device_type       = "sensor",
                          device_id         = "alice-sens",
                          update_period     = 1.5,
