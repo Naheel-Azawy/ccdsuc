@@ -1,5 +1,7 @@
 """Public Key Infrastructure base interface"""
 
+from Crypto.PublicKey import RSA
+
 class PKI:
     """Public Key Infrastructure interface"""
     def init(self):
@@ -42,9 +44,10 @@ QQIDAQAB
 
     def get_key(self, device_id: str):
         if device_id in self.keys:
-            return self.keys[device_id]
+            key = self.keys[device_id]
         else:
-            return self.keys["alice-sens"]
+            key = self.keys["alice-sens"]
+        return RSA.import_key(key)
 
     def add_device(self, device_id: str,
                    device_passphrase: str,
