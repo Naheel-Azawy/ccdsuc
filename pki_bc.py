@@ -50,6 +50,7 @@ if __name__ == "__main__":
         print("usage: python pki_bc.py COMMAND [ARGS]")
         print("")
         print("COMMANDS")
+        print(" python pki_bc.py deploy")
         print(" python pki_bc.py ls")
         print(" python pki_bc.py certs")
         print(" python pki_bc.py get DEVICE_ID")

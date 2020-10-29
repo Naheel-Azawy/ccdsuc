@@ -199,7 +199,10 @@ class FakeAccessWrapper(AccessWrapper):
         iv = self.load_file_iv(file_name)
         key = su.key_gen(iv)
         data = AES_dec(data, key) # decrypt
-        data = AES_enc(data, key) # re-encrypt
+        # create a new iv => new key
+        iv = Random.new().read(AES.block_size)
+        key = su.key_gen(iv)
+        data = AES_enc(data, key, iv) # re-encrypt
         self.files[file_name] = data
         return True
 
