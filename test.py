@@ -182,6 +182,86 @@ def revocation_benchmark():
     else:
         print(f"{p} already exist")
 
+def revocation_benchmark_2():
+    print("* Revocation benchmark")
+
+    print("** RUNNING N VS TIME")
+    p = "./benchmarks/test_sharing_revocation_speed_vs_size.csv"
+    if not os.path.exists(p):
+        aw = FakeAccessWrapper()
+        alice = SharingUtility("alice", "abc", access_wrapper=aw)
+        bob = SharingUtility("bob", "123", access_wrapper=aw)
+
+        def keys_getter(user):
+            if user == bob.user_id: return bob.keys["pub"]
+            else: raise Exception(f"Unknown user {user}")
+
+        res = ""
+        for size in tqdm(range(0, 2500000, 50000)):
+            dur = 0
+            times = 10
+            for t in range(times):
+                fname = f"{size}{t}.txt"
+                f_data, f_data_enc = aw.fake_file(alice, fname, size=size)
+                alice.share_file(fname, bob.user_id, bob.keys["pub"])
+                start = time.time()
+                ret = alice.revoke_shared_file2(fname, bob.user_id, keys_getter)
+                end = time.time()
+                dur += (end - start) * 1000
+            dur /= times
+            res += f"{size},{dur}\n"
+
+        with open(p, "w") as f:
+            f.write(res)
+    else:
+        print(f"{p} already exist")
+
+    print("** RUNNING U VS TIME")
+    p = "./benchmarks/test_sharing_revocation_speed_vs_U.csv"
+    if not os.path.exists(p):
+
+        # all will have the same keys, just for simplicity of testing
+        fake = SharingUtility("fake", "123")
+        def keys_getter(user):
+            return fake.keys["pub"]
+
+        res = ""
+        for u in tqdm(range(1, 101, 2)):
+            dur = 0
+            times = 5
+            for t in range(times):
+                # creating the environment
+                aw = FakeAccessWrapper()
+                #aw.upload_delay = 0
+                alice = SharingUtility("alice", "abc", access_wrapper=aw,
+                                     k_sym=fake.keys["sym"],
+                                     k_pub=fake.keys["pub"],
+                                     k_priv=fake.keys["priv"])
+                # the file
+                fname = "foo.txt"
+                f_data, f_data_enc = aw.fake_file(alice, fname, data=b"hello")
+                # bobs
+                bob = None
+                for user in range(u):
+                    bob = SharingUtility(f"U{user}", access_wrapper=aw,
+                                         k_sym=fake.keys["sym"],
+                                         k_pub=fake.keys["pub"],
+                                         k_priv=fake.keys["priv"])
+                    alice.share_file(fname, bob.user_id, bob.keys["pub"]) # share
+                # print(alice.list_files_shared_by_us())
+                # print()
+                start = time.time()
+                ret = alice.revoke_shared_file2(fname, bob.user_id, keys_getter)
+                end = time.time()
+                dur += (end - start) * 1000
+            dur /= times
+            res += f"{u},{dur}\n"
+
+        with open(p, "w") as f:
+            f.write(res)
+    else:
+        print(f"{p} already exist")
+
 def tables_json_vs_pickle():
     print("* Tables json vs pickle")
 
@@ -407,6 +487,68 @@ def reupload_test():
     data = AES_dec(f_loaded, key) # decrypt
     print(data)
 
+def revocation_test():
+    print("* Revocation test")
+    aw = FakeAccessWrapper()
+
+    alice = SharingUtility("alice", "abc", access_wrapper=aw)
+    bob1 = SharingUtility(f"bob1", "123", access_wrapper=aw)
+    bob2 = SharingUtility(f"bob2", "456", access_wrapper=aw)
+
+    f_data, f_data_enc = aw.fake_file(alice, "foo.txt", data=b"hello")
+
+    print("** Sharing file foo.txt by Alice to Bob1 and Bob2")
+    alice.share_file("foo.txt", bob1.user_id, bob1.keys["pub"])
+    alice.share_file("foo.txt", bob2.user_id, bob2.keys["pub"])
+
+    print("** Files shared by Alice:")
+    print(alice.list_files_shared_by_us())
+
+    print("** Files shared with Bobs:")
+    print(bob1.list_files_shared_with_us())
+    print(bob2.list_files_shared_with_us())
+
+    print("** Loading foo.txt by Bob1")
+    f_shared_data = aw.load_fake_shared_file(bob1, "foo.txt")
+    print("** Loaded equals original:")
+    print(f_shared_data == f_data)
+
+    print()
+
+    print("** Revoking Bob1 from accessing foo.txt (by Alice)")
+    def keys_getter(user):
+        if user == bob1.user_id:
+            return bob1.keys["pub"]
+        elif user == bob2.user_id:
+            return bob2.keys["pub"]
+        else:
+            raise Exception(f"Unknown user {user}")
+    ret = alice.revoke_shared_file2("foo.txt", bob1.user_id, keys_getter)
+    print(f"** Revoke is {ret}")
+
+    print("** Files shared by Alice:")
+    print(alice.list_files_shared_by_us())
+
+    print("** Files shared with Bobs:")
+    print(bob1.list_files_shared_with_us())
+    print(bob2.list_files_shared_with_us())
+
+    print()
+
+    print("** Loading foo.txt by Bob1")
+    f_shared_data = aw.load_fake_shared_file(bob1, "foo.txt")
+    print("** Loaded equals original:")
+    print(f_shared_data == f_data)
+    print("** Loaded foo.txt = " + str(f_shared_data))
+
+    print()
+
+    print("** Loading foo.txt by Bob2")
+    f_shared_data = aw.load_fake_shared_file(bob2, "foo.txt")
+    print("** Loaded equals original:")
+    print(f_shared_data == f_data)
+    print("** Loaded foo.txt = " + str(f_shared_data))
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "benchmark":
         if len(sys.argv) > 2 and sys.argv[2] == "clean":
@@ -416,7 +558,8 @@ if __name__ == "__main__":
             os.mkdir("./benchmarks")
         speed_benchmark()
         tables_size_benchmark()
-        revocation_benchmark()
+        #revocation_benchmark()
+        revocation_benchmark_2()
         exit()
     #tables_json_vs_pickle()
     #tables_test()
@@ -428,4 +571,5 @@ if __name__ == "__main__":
     #pki_test()
     #simple_keys_test()
     #server_test()
-    reupload_test()
+    #reupload_test()
+    revocation_test()

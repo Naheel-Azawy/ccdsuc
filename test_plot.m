@@ -53,16 +53,19 @@ saveas(p, "./benchmarks/test_sharing_cost.png");
 
 figure;
 d = csvread("./benchmarks/test_sharing_revocation_speed_vs_size.csv");
+subplot(2, 1, 1);
 p = plot(d(:,1), d(:,2));
-hold on;
-d = csvread("./benchmarks/test_sharing_revocation_speed_vs_U.csv");
-p = plot(d(:,1), d(:,2));
-
-legend("Varying the size of the file",
-       "Varying the number of users")
-xlabel("Sharing variable");
+xlabel("Size of the revoked file in bytes");
 ylabel("Revocation time in milliseconds");
 grid on;
+
+subplot(2, 1, 2);
+d = csvread("./benchmarks/test_sharing_revocation_speed_vs_U.csv");
+p = plot(d(:,1), d(:,2));
+xlabel("Number of users the file is shared with");
+ylabel("Revocation time in milliseconds");
+grid on;
+
 saveas(p, "./benchmarks/test_sharing_revocation.png");
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -6,6 +6,7 @@ import secrets
 import base64
 import pickle
 import json
+import time
 from Crypto              import Random
 from Crypto.Cipher       import AES, PKCS1_OAEP
 from Crypto.PublicKey    import RSA
@@ -163,6 +164,7 @@ class AccessWrapper(object):
 class FakeAccessWrapper(AccessWrapper):
     def __init__(self, use_json=False):
         self.use_json = use_json
+        self.upload_delay = 0
         self.tables = {}
         self.files  = {}
 
@@ -183,6 +185,7 @@ class FakeAccessWrapper(AccessWrapper):
 
     def upload_table(self, name, table):
         self.tables[name] = table
+        time.sleep(self.upload_delay)
         return True
 
     def load_file_iv(self, file_name):
@@ -204,6 +207,7 @@ class FakeAccessWrapper(AccessWrapper):
         key = su.key_gen(iv)
         data = AES_enc(data, key, iv) # re-encrypt
         self.files[file_name] = data
+        time.sleep(self.upload_delay)
         return True
 
     # fake methods:
@@ -211,9 +215,9 @@ class FakeAccessWrapper(AccessWrapper):
     def fake_file(self, su, file_name, data=None, size=512):
         if data == None:
             data = bytearray([i % 256 for i in range(size)])
-            iv = Random.new().read(AES.block_size)
-            key = su.key_gen(iv)
-            data_enc = AES_enc(data, key, iv)
+        iv = Random.new().read(AES.block_size)
+        key = su.key_gen(iv)
+        data_enc = AES_enc(data, key, iv)
         self.files[file_name] = data_enc
         return data, data_enc
 
@@ -482,6 +486,80 @@ class SharingUtility(object):
 
         # upload the file
         return self.access_wrapper.reupload_file(self, file_path)
+
+    # revoke bob from accessing a file (experimental)
+    # k_pub_getter: function(user_id) returns RSA public key
+    # TODO: finalize and replace the old one
+    def revoke_shared_file2(self, file_path, bob_id, k_pub_getter):
+        # print(f">>> revoke_shared_file({file_path}, {bob_id}, {k_pub_getter})")
+
+        # clean the file name
+        file_path = self.access_wrapper.name(file_path)
+
+        # load the files shared by Alice with anyone else
+        T_A_others = self.load_table()
+        if T_A_others == None:
+            return False
+
+        # we did not share anything with bob before
+        if bob_id not in T_A_others:
+            return False
+
+        # list of file paths shared with Bob from Alice
+        files_shared_with_bob = T_A_others[bob_id]
+
+        # this file is not shared with bob
+        if file_path not in files_shared_with_bob:
+            return False
+
+        # remove the revoked file from the list
+        files_shared_with_bob.remove(file_path)
+
+        # re-construct Bob's table (by Alice)
+        T_A_B = {}
+        for f in files_shared_with_bob:
+            T_A_B[f] = self.key_gen(
+                    self.access_wrapper.load_file_iv(f))
+
+        # serialize tables
+        s_T_A_B      = self.access_wrapper.serialize(T_A_B)
+        s_T_A_others = self.access_wrapper.serialize(T_A_others)
+
+        # upload T_A_B
+        T_A_B_enc = RSA_enc(s_T_A_B, k_pub_getter(bob_id))
+        self.upload_table(self.get_table_name(
+            alice_id=self.alice_id,
+            bob_id=bob_id), T_A_B_enc)
+
+        # upload T_A_others
+        T_A_others_enc = AES_enc(s_T_A_others, self.k_alice)
+        self.upload_table(self.get_table_name(), T_A_others_enc)
+
+        # upload the file
+        upload_ret = self.access_wrapper.reupload_file(self, file_path)
+
+        # update tables of all other users who have this file shared with
+        T_A_ = {}
+        # for every user we share something with
+        for user in T_A_others:
+            # if we share this particular file
+            if file_path in T_A_others[user]:
+                # recontruct the table for that person
+                # to update the changed key for the newly
+                # revoked file for bob
+                T_A_[user] = {}
+                for f in T_A_others[user]:
+                    T_A_[user][f] = self.key_gen(
+                        self.access_wrapper.load_file_iv(f))
+                # serialize
+                s_T_A_user = self.access_wrapper.serialize(T_A_[user])
+                # upload
+                e_T_A_user = RSA_enc(s_T_A_user, k_pub_getter(user))
+                self.upload_table(self.get_table_name(
+                    alice_id=self.alice_id,
+                    bob_id=user), e_T_A_user)
+
+        return upload_ret
 
     def relative_path(self, file_path):
         return self.access_wrapper.name(file_path)
