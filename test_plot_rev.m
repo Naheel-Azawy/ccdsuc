@@ -29,7 +29,8 @@ hplot2 = line(xdata2, ydata2, 'Color', 'r', 'Parent', hax2);
 % Link the y limits and position together
 linkprop([hax1, hax2], {'ylim', 'Position'});
 
-ylim([0, 80]);
+maxy = max([max(ydata1), max(ydata2)]);
+ylim([0, maxy]);
 
 % Draw some labels
 xlabel(hax1, 'Size of the revoked file in bytes')
@@ -39,21 +40,6 @@ legend([hplot1, hplot2], ...
        {'Size of the revoked file in bytes', ...
         'Number of users the file is shared with'})
 grid on;
-
-%figure;
-%d = csvread("./benchmarks/test_sharing_revocation_speed_vs_size.csv");
-%subplot(2, 1, 1);
-%p = plot(d(:,1), d(:,2));
-%xlabel("Size of the revoked file in bytes");
-%ylabel("Revocation time in milliseconds");
-%grid on;
-%
-%subplot(2, 1, 2);
-%d = csvread("./benchmarks/test_sharing_revocation_speed_vs_U.csv");
-%p = plot(d(:,1), d(:,2));
-%xlabel("Number of users the file is shared with");
-%ylabel("Revocation time in milliseconds");
-%grid on;
 
 saveas(gca, "./benchmarks/test_sharing_revocation.png");
 

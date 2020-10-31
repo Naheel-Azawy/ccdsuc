@@ -135,69 +135,12 @@ def revocation_benchmark():
         alice = SharingUtility("alice", "abc", access_wrapper=aw)
         bob = SharingUtility("bob", "123", access_wrapper=aw)
 
-        res = ""
-        for size in tqdm(range(0, 2500000, 50000)):
-            dur = 0
-            times = 10
-            for t in range(times):
-                fname = f"{size}{t}.txt"
-                f_data, f_data_enc = aw.fake_file(alice, fname, size=size)
-                alice.share_file(fname, bob.user_id, bob.keys["pub"])
-                start = time.time()
-                ret = alice.revoke_shared_file(fname, bob.user_id, bob.keys["pub"])
-                end = time.time()
-                dur += (end - start) * 1000
-            dur /= times
-            res += f"{size},{dur}\n"
-
-        with open(p, "w") as f:
-            f.write(res)
-    else:
-        print(f"{p} already exist")
-
-    print("** RUNNING U VS TIME")
-    p = "./benchmarks/test_sharing_revocation_speed_vs_U.csv"
-    if not os.path.exists(p):
-        aw = FakeAccessWrapper()
-        alice = SharingUtility("alice", "abc", access_wrapper=aw)
-        fname = "foo.txt"
-        f_data, f_data_enc = aw.fake_file(alice, fname)
-
-        res = ""
-        for u in tqdm(range(0, 2500000, 50000)):
-            dur = 0
-            times = 1
-            for t in range(times):
-                bob = SharingUtility(f"U{u}-{t}", "123", access_wrapper=aw)
-                alice.share_file(fname, bob.user_id, bob.keys["pub"])
-                start = time.time()
-                ret = alice.revoke_shared_file(fname, bob.user_id, bob.keys["pub"])
-                end = time.time()
-                dur += (end - start) * 1000
-            dur /= times
-            res += f"{u},{dur}\n"
-
-        with open(p, "w") as f:
-            f.write(res)
-    else:
-        print(f"{p} already exist")
-
-def revocation_benchmark_2():
-    print("* Revocation benchmark")
-
-    print("** RUNNING N VS TIME")
-    p = "./benchmarks/test_sharing_revocation_speed_vs_size.csv"
-    if not os.path.exists(p):
-        aw = FakeAccessWrapper()
-        alice = SharingUtility("alice", "abc", access_wrapper=aw)
-        bob = SharingUtility("bob", "123", access_wrapper=aw)
-
         def keys_getter(user):
             if user == bob.user_id: return bob.keys["pub"]
             else: raise Exception(f"Unknown user {user}")
 
         res = ""
-        for size in tqdm(range(0, 2500000, 50000)):
+        for size in tqdm(range(1, 1510000, 30000)):
             dur = 0
             times = 10
             for t in range(times):
@@ -558,8 +501,7 @@ if __name__ == "__main__":
             os.mkdir("./benchmarks")
         speed_benchmark()
         tables_size_benchmark()
-        #revocation_benchmark()
-        revocation_benchmark_2()
+        revocation_benchmark()
         exit()
     #tables_json_vs_pickle()
     #tables_test()
