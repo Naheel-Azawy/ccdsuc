@@ -1,15 +1,16 @@
 figure;
-d = csvread("./benchmarks/test_sharing_N_vs_cost.csv");
-p = plot(d(:,1), d(:,2));
-hold on;
-d = csvread("./benchmarks/test_sharing_U_vs_cost.csv");
-p = plot(d(:,1), d(:,2));
 
-legend("Varying the number of files (N)",
-       "Varying the number of users (U)")
-xlabel("Sharing variable (N/U)");
-ylabel("Size in bytes");
-grid on;
-saveas(p, "./benchmarks/test_sharing_cost.png");
+vs_N = csvread("./benchmarks/test_sharing_N_vs_cost.csv");
+vs_U = csvread("./benchmarks/test_sharing_U_vs_cost.csv");
 
-waitfor(p);
+xdata1 = vs_N(:,1);
+ydata1 = vs_N(:,2);
+xdata2 = vs_U(:,1);
+ydata2 = vs_U(:,2);
+
+test_plot_2(xdata1, ydata1, xdata2, ydata2, ...
+            'Number of files (N)', ...
+            'Number of users (U)', ...
+            'Size in bytes')
+
+saveas(gca, "./benchmarks/test_sharing_cost.png");
