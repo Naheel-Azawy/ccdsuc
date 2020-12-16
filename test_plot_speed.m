@@ -17,14 +17,11 @@ d(:,1) /= 1e+6;
 p = plot(d(:,1), d(:,2));
 hold on;
 p = plot(d(:,1), d(:,3));
-hold on;
-p = plot(d(:,1), diff);
 grid on;
 ylim([0, max(d(:,2))])
-xlabel("Size in kilobytes");
+xlabel("Size in megabytes");
 ylabel("Time in milliseconds");
 legend("Encryption",
-       "Decryption",
-       "Key generation");
+       "Decryption");
 
 saveas(p, "./benchmarks/test_sharing_speed.png");
