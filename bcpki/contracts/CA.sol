@@ -38,7 +38,7 @@ contract CA is Ownable {
                     string memory valid_to,
                     string memory public_key,
                     string memory subject_id)
-        public returns(bool) {
+        public onlyOwner returns(bool) {
         if (certs[cert_hash].exist) {
             return false;
         } else {
