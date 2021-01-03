@@ -1,4 +1,4 @@
-function test_plot_2(xdata1, ydata1, xdata2, ydata2, xlabel1, xlabel2, ylabel0)
+function test_plot_2(xdata1, ydata1, xdata2, ydata2, xlabel1, legend1, xlabel2, legend2, ylabel0)
   %% Create the first axes
   hax1 = axes();
 
@@ -29,6 +29,6 @@ function test_plot_2(xdata1, ydata1, xdata2, ydata2, xlabel1, xlabel2, ylabel0)
   xlabel(hax1, xlabel1)
   xlabel(hax2, xlabel2)
   ylabel(hax1, ylabel0)
-  legend([hplot1, hplot2], {xlabel1, xlabel2})
+  legend([hplot1, hplot2], {legend1, legend2})
   grid on;
 end

@@ -21,7 +21,7 @@ grid on;
 ylim([0, max(d(:,2))])
 xlabel("Size in megabytes");
 ylabel("Time in milliseconds");
-legend("Encryption",
-       "Decryption");
+legend("Encryption time",
+       "Decryption time");
 
 saveas(p, "./benchmarks/test_sharing_speed.png");
