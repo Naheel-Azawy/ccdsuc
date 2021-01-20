@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-
-# from __future__ import print_function, absolute_import, division
-
 import logging
 import os
 import math
@@ -23,7 +19,7 @@ def log(msg):
     if LOG:
         print(msg)
 
-class Loopback(LoggingMixIn, Operations):
+class CryptoFS(LoggingMixIn, Operations):
     """Files are stored as follows:
     +----+--------------+--------+---------+
     | iv | padding size |  data  | padding |
@@ -33,20 +29,30 @@ class Loopback(LoggingMixIn, Operations):
 
     def __init__(self, root, mount):
         self.root = realpath(root)
+        self.mount = realpath(mount)
         self.block_size = AES.block_size
         self.rwlock = Lock()
 
     def __call__(self, op, path, *args):
-        return super(Loopback, self).__call__(op, self.root + path, *args)
+        print(f">>> __call__({op}, {path})")
+        # path = self.translate_path(path)
+        return super(CryptoFS, self).__call__(op, path, *args)
 
     def access(self, path, mode):
+        path = self.translate_path(path)
         if not os.access(path, mode):
             raise FuseOSError(EACCES)
 
-    chmod = os.chmod
-    chown = os.chown
+    def chmod(self, path, mode):
+        path = self.translate_path(path)
+        return os.chmod(path, mode)
+
+    def chown(self, path, uid, gid):
+        path = self.translate_path(path)
+        return os.chown(path, uid, gid)
 
     def create(self, path, mode):
+        path = self.translate_path(path)
         return os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
 
     def flush(self, path, fh):
@@ -59,6 +65,7 @@ class Loopback(LoggingMixIn, Operations):
             return os.fsync(fh)
 
     def getattr(self, path, fh=None):
+        path = self.translate_path(path)
         st = os.lstat(path)
         attr = dict((key, getattr(st, key)) for key in (
             'st_atime', 'st_ctime', 'st_gid', 'st_mode', 'st_mtime',
@@ -87,16 +94,24 @@ class Loopback(LoggingMixIn, Operations):
         return attr
 
     getxattr = None
+    listxattr = None
 
     def link(self, target, source):
-        return os.link(self.root + source, target)
+        target = self.translate_path(target)
+        source = self.translate_path(source)
+        return os.link(source, target)
 
-    listxattr = None
-    mkdir = os.mkdir
-    mknod = os.mknod
+    def mkdir(self, path, mode):
+        path = self.translate_path(path)
+        return os.mkdir(path, mode)
+
+    def mknod(self, path, mode, dev):
+        path = self.translate_path(path)
+        return os.mknod(path, mode, dev)
 
     def open(self, path, flags):
         log(f">>> open({path}, {flags})")
+        path = self.translate_path(path)
         # if the file is open in read only mode,
         # we open in read/write instead.
         # this is important to read the IV and unaligned blocks
@@ -111,38 +126,54 @@ class Loopback(LoggingMixIn, Operations):
         return os.open(path, flags)
 
     def readdir(self, path, fh):
-        return ['.', '..'] + os.listdir(path)
+        return ['.', '..'] + self.lsdir(path)
 
-    readlink = os.readlink
+    def readlink(self, path):
+        path = self.translate_path(path)
+        return os.readlink(path)
 
     def release(self, path, fh):
         return os.close(fh)
 
     def rename(self, old, new):
-        return os.rename(old, self.root + new)
+        old = self.translate_path(old)
+        new = self.translate_path(new)
+        return os.rename(old, new)
 
-    rmdir = os.rmdir
+    def rmdir(self, path):
+        path = self.translate_path(path)
+        return os.rmdir(path)
 
     def statfs(self, path):
+        path = self.translate_path(path)
         stv = os.statvfs(path)
         return dict((key, getattr(stv, key)) for key in (
             'f_bavail', 'f_bfree', 'f_blocks', 'f_bsize', 'f_favail',
             'f_ffree', 'f_files', 'f_flag', 'f_frsize', 'f_namemax'))
 
     def symlink(self, target, source):
+        target = self.translate_path(target)
+        source = self.translate_path(source)
         return os.symlink(source, target)
 
     def truncate(self, path, length, fh=None):
+        path = self.translate_path(path)
         # add the length of the file size and the IV
         length += self.block_size
         with open(path, 'rb+') as f:
             f.truncate(length)
 
-    unlink = os.unlink
-    utimens = os.utime
+    def unlink(self, path):
+        path = self.translate_path(path)
+        return os.unlink(path)
+
+    def utimens(self, path, times=None):
+        path = self.translate_path(path)
+        return os.utime(path, times)
 
     def read(self, path, size, offset, fh):
         log(f">>> read({path}, {size}, {offset}, {fh})")
+        path = self.translate_path(path)
         with self.rwlock:
             plaintext, first_block_num, seq_size, file_size, iv = \
                 self.read_blocks(path, size, offset, fh)
@@ -153,6 +184,7 @@ class Loopback(LoggingMixIn, Operations):
 
     def write(self, path, data, offset, fh):
         log(f">>> write({path}, len:{len(data)}, {offset}, {fh})")
+        path = self.translate_path(path)
         size = len(data)
         with self.rwlock:
             # this is needed to ensure that the file is written to the disk.
@@ -252,11 +284,6 @@ class Loopback(LoggingMixIn, Operations):
         cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
         return cipher
 
-    def key_gen(self, iv):
-        # needs to be 32 bytes long
-        return b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-        # return iv + iv # TODO: connect to real sharing key_gen
-
     def read_blocks(self, path, size, offset, fh):
         log(f">>>> read_blocks({path}, {size}, {offset}, {fh})")
 
@@ -338,14 +365,28 @@ class Loopback(LoggingMixIn, Operations):
 
         return plaintext, first_block_num, seq_size, file_size, iv
 
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('root')
-    parser.add_argument('mount')
-    args = parser.parse_args()
+    def key_gen(self, iv):
+        """To be overridden in a child class"""
+        # needs to be 32 bytes long
+        return b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 
+    def translate_path(self, path):
+        """To be overridden in a child class"""
+        return self.root + path
+
+    def lsdir(self, path):
+        """To be overridden in a child class"""
+        path = self.translate_path(path)
+        return os.listdir(path)
+
+def fuse_mount(fs, name=None):
+    """Mounts encrypted <root> to <mount> using <fs> (e.g. CryptoFS)"""
     if LOG:
         logging.basicConfig(level=logging.DEBUG)
-    fuse = FUSE(
-        Loopback(args.root, args.mount), args.mount, foreground=True, allow_other=True)
+    if name is None:
+        name = fs.__class__.__name__
+    return FUSE(fs, fs.mount, foreground=True, allow_other=True,
+                fsname=name)
+
+def main(args):
+    fuse_mount(CryptoFS(args[1], args[2]))

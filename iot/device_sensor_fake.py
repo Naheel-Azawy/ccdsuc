@@ -1,6 +1,6 @@
 """An example sensor that writes random integers from 0 to 255"""
 
-from device import IoTDevice
+from iot.device import IoTDevice
 import random
 
 class FakeSensor(IoTDevice):
@@ -20,4 +20,5 @@ class FakeSensor(IoTDevice):
     def read_sensor(self):
         return random.randint(0, 255)
 
-FakeSensor().run()
+def main(args):
+    FakeSensor().run()

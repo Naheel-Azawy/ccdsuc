@@ -1,11 +1,11 @@
 """The main interface to any IoT device"""
 
-from pki              import FakePKI
-#from pki_bc           import BCPKI
-from tcp_client       import Server
-from sharing_tcp      import TCPAccessWrapper
-from sharing          import SharingUtility, gen_keys_from
-from Crypto.PublicKey import RSA
+from public_key.pki    import FakePKI
+#from public_key.pki_bc import BCPKI
+from iot.tcp_client    import Server
+from iot.sharing_tcp   import TCPAccessWrapper
+from core.sharing      import SharingUtility, gen_keys_from
+from Crypto.PublicKey  import RSA
 
 import os
 import time

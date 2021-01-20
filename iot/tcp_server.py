@@ -4,7 +4,6 @@ import socket
 import datetime
 import os
 
-VOLATILE = False
 PORT = os.getenv("PORT") or 2010
 PORT = int(PORT)
 
@@ -154,8 +153,8 @@ def start_server(port, fs):
 
         fs.preview()
 
-if __name__ == "__main__":
-    if VOLATILE:
+def main(args):
+    if args[1] == "--volatile":
         start_server(PORT, MemoryFS())
     else:
         start_server(PORT, DiskFS())

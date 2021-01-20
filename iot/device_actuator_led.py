@@ -1,6 +1,6 @@
 """An LED actuator. Uses PWM for the selected pin"""
 
-from device import IoTDevice
+from iot.device import IoTDevice
 import RPi.GPIO as GPIO
 
 class LED(IoTDevice):
@@ -40,4 +40,5 @@ class LED(IoTDevice):
         except Exception as e:
             self.error(f"failed setting cycle ({e})")
 
-LED().run()
+def main(args):
+    LED().run()

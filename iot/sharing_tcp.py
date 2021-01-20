@@ -1,9 +1,9 @@
 """Data access wrapper interface for sharing that uses the TCP server"""
 
-from sharing       import AccessWrapper, AES_dec, AES_enc
-from tcp_client    import Server
-from Crypto.Cipher import AES
-from Crypto        import Random
+from core.sharing   import AccessWrapper, AES_dec, AES_enc
+from iot.tcp_client import Server
+from Crypto.Cipher  import AES
+from Crypto         import Random
 
 class TCPAccessWrapper(AccessWrapper):
     def __init__(self, server: Server):

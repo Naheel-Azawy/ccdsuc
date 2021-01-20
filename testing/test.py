@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from tqdm import tqdm
-from sharing import *
+from core.sharing import *
 
 # returns a csv string with "file_size,time_to_encrypt"
 def speed_benchmark_helper(sharing):

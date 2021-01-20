@@ -1,6 +1,6 @@
 """An example fake actuator that prints the input value to stdout"""
 
-from device import IoTDevice
+from iot.device import IoTDevice
 
 class FakeActuator(IoTDevice):
     def __init__(self):
@@ -15,4 +15,6 @@ class FakeActuator(IoTDevice):
     def write_actuator(self, values):
         self.log(f"FAKE ACTUATOR WRITE ({values})")
 
-FakeActuator().run()
+
+def main(args):
+    FakeActuator().run()

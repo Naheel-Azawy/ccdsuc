@@ -1,9 +1,9 @@
 """BlockChain PKI. Intefaces with the CA"""
 
-from pki              import PKI
-from pki_ca           import CA
-from sharing          import gen_keys_from, stringify_keys
-from Crypto.PublicKey import RSA
+from public_key.pki    import PKI
+from public_key.pki_ca import CA
+from core.sharing      import gen_keys_from, stringify_keys
+from Crypto.PublicKey  import RSA
 
 class BCPKI(PKI):
     """BlockChain PKI"""
@@ -41,8 +41,7 @@ class BCPKI(PKI):
             "public_key": key
         })
 
-if __name__ == "__main__":
-    import sys
+def main(args):
     import os
     import json
 
@@ -56,8 +55,6 @@ if __name__ == "__main__":
         print(" python pki_bc.py get DEVICE_ID")
         print(" python pki_bc.py add DEVICE_ID PASSPHRASE VALID_TO")
         exit(1)
-
-    args = sys.argv
 
     if len(args) < 2: usage()
 

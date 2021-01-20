@@ -1,6 +1,6 @@
 """An example sensor that writes random integers from 0 to 255"""
 
-from device import IoTDevice
+from iot.device import IoTDevice
 import RPi.GPIO as GPIO
 import time
 
@@ -50,4 +50,5 @@ class LDR(IoTDevice):
         # scale down to get in the range 0 to 100
         return count // 10
 
-LDR().run()
+def main(args):
+    LDR().run()
