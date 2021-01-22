@@ -1,11 +1,10 @@
 """The main interface to any IoT device"""
 
-from public_key.pki    import FakePKI
-#from public_key.pki_bc import BCPKI
-from iot.tcp_client    import Server
-from iot.sharing_tcp   import TCPAccessWrapper
-from core.sharing      import SharingUtility, gen_keys_from
-from Crypto.PublicKey  import RSA
+from public_key.pki   import pki_interface
+from iot.tcp_client   import Server
+from iot.sharing_tcp  import TCPAccessWrapper
+from core.sharing     import SharingUtility, gen_keys_from
+from Crypto.PublicKey import RSA
 
 import os
 import time
@@ -45,12 +44,7 @@ class IoTDevice:
                                  access_wrapper=self.aw,
                                  keys_cache=os.getenv("HOME") + f"/{device_id}")
 
-        try:
-            self.pki = BCPKI()
-        except NameError:
-            # if not imported, then we test with the fake one
-            self.pki = FakePKI()
-
+        self.pki = pki_interface()
         self.period = update_period
         self.log_count = log_count
         self.running = False

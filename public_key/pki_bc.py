@@ -1,9 +1,9 @@
 """BlockChain PKI. Intefaces with the CA"""
 
-from public_key.pki    import PKI
-from public_key.pki_ca import CA
-from core.sharing      import gen_keys_from, stringify_keys
-from Crypto.PublicKey  import RSA
+from public_key.pki       import PKI
+from public_key.pki_bc_ca import CA
+from core.sharing         import gen_keys_from, stringify_keys
+from Crypto.PublicKey     import RSA
 
 class BCPKI(PKI):
     """BlockChain PKI"""

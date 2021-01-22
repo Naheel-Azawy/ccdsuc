@@ -24,6 +24,9 @@ class ShareFS(CryptoFS):
             ls.append("shared")
         return ls
 
+# TODO: create AcessWrapper
+# TODO: create commands operations (i.e. share, revoke)
+
 def main(args):
     try:
         root = args[1]

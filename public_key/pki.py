@@ -53,3 +53,10 @@ QQIDAQAB
                    device_passphrase: str,
                    valid_to: str):
         pass
+
+try:
+    import pki_bc
+    pki_interface = pki_bc.BCPKI
+except ImportError:
+    print("WRANING: failed importing BCPKI, using fake PKI")
+    pki_interface = FakePKI

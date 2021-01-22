@@ -32,7 +32,8 @@ class FSInterface:
 
 class DiskFS(FSInterface):
     def __init__(self):
-        self.root = "./diskfs/"
+        self.root = os.getenv("HOME") + "/.cache/sharing-iot-server/"
+        os.makedirs(self.root, exist_ok=True)
 
     def get(self, path: str):
         f = open(self.root + path, "rb")
@@ -154,7 +155,7 @@ def start_server(port, fs):
         fs.preview()
 
 def main(args):
-    if args[1] == "--volatile":
+    if len(args) > 1 and args[1] == "--volatile":
         start_server(PORT, MemoryFS())
     else:
         start_server(PORT, DiskFS())
