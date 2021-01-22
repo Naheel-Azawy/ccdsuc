@@ -1,31 +1,160 @@
 import os
+import shutil
 
-from core.sharing import SharingUtility
-from fs.crypto_fs import CryptoFS, fuse_mount
+from errno import EACCES
+from fuse  import FuseOSError
+
+from core.sharing   import SharingUtility, AccessWrapper
+from public_key.pki import pki_interface
+from fs.crypto_fs   import CryptoFS
+
+class FSAccessWrapper(AccessWrapper):
+    def __init__(self):
+        self.fs = None
+
+    def storage_cost(self):
+        res = 0
+        p = self.tables_dir()
+        for t in self.list_tables():
+            res += os.path.getsize(f"{p}/{t}")
+        return res
+
+    def list_tables(self):
+        p = self.tables_dir()
+        if p is not None:
+            return list(map(lambda abs_path: os.path.relpath(abs_path, p),
+                            os.listdir(p)))
+        else:
+            return []
+
+    def load_table(self, name):
+        p = f"{self.tables_dir()}/{name}"
+        if not os.path.exists(p):
+            return None
+        else:
+            with open(p, "r") as f:
+                return f.read()
+            return None
+
+    def upload_table(self, name, table):
+        with open(f"{self.tables_dir()}/{name}", "w") as f:
+            f.write(table)
+            return True
+        return False
+
+    def load_file_iv(self, file_name):
+        p = f"{self.fs.root}/{self.fs.su.user_id}/{file_name}"
+        if not os.path.exists(p):
+            return None
+        with open(p, "rb") as f:
+            return f.read(self.fs.block_size)
+        return None
+
+    def file_exists(self, file_name):
+        return os.path.exists(f"{self.fs.mount}/{file_name}")
+
+    def reupload_file(self, su, file_name):
+        file_name = f"{self.fs.mount}/{file_name}"
+        tmp = f"{file_name}___tmp"
+        shutil.copy2(file_name, tmp)
+        shutil.move(tmp, file_name)
+        return True
+
+    # extra functions
+
+    def tables_dir(self):
+        if self.fs is None:
+            return None
+        p = f"{self.fs.root}/__sharing_tables"
+        if not os.path.isdir(p):
+            os.makedirs(p)
+        return p
 
 class ShareFS(CryptoFS):
 
     def __init__(self, root, mount, sharing_util):
         super().__init__(root, mount)
         self.su = sharing_util
+        self.pki = pki_interface()
         os.makedirs(f"{self.root}/{self.su.user_id}", exist_ok=True)
 
-    def key_gen(self, iv):
-        # return self.su.keys["sym"]
-        return self.su.key_gen(iv)
+    # override
+    def key_gen(self, path, iv):
+        if path.startswith("/shared"):
+            path = path.split("/")
+            bob = path[1] if len(path) >= 2 else None
+            if len(path) > 2:
+                path = "/".join(path[2:])
+                shared = self.su.list_files_shared_with_us()
+                if bob in shared and path in shared[bob]:
+                    return shared[bob][path]
+                else:
+                    raise FuseOSError(EACCES)
+            else:
+                raise FuseOSError(EACCES)
+        else:
+            return self.su.key_gen(iv)
 
+    # override
     def translate_path(self, path):
-        return self.root + "/" + self.su.user_id + path
+        if path.startswith("/shared"):
+            shared = self.su.list_files_shared_with_us()
+            if path == "/shared":
+                return self.root + "/" + self.su.user_id + path
+            else:
+                path = path.split("/")
+                bob = path[1] if len(path) >= 2 else None
+                if len(path) == 2 and bob in shared:
+                    return f"{self.root}/{bob}"
+                elif len(path) > 2:
+                    path = "/".join(path[2:])
+                    return f"{self.root}/{bob}/{path}"
+                else:
+                    raise FuseOSError(EACCES)
+        else:
+            return self.root + "/" + self.su.user_id + path
 
+    # override
     def lsdir(self, path):
         real_path = self.translate_path(path)
-        ls = os.listdir(real_path)
         if path == "/":
-            ls.append("shared")
-        return ls
+            if not os.path.isdir(f"{real_path}/shared"):
+                os.makedirs(f"{real_path}/shared")
+        if path.startswith("/shared"):
+            shared = self.su.list_files_shared_with_us()
+            if path == "/shared":
+                return list(shared.keys())
+            else:
+                path = path.split("/")
+                bob = path[1] if len(path) >= 2 else None
+                if len(path) == 2 and bob in shared:
+                    return shared[bob].keys()
+                elif len(path) > 2:
+                    path = "/".join(path[2:])
+                    return os.listdir(f"{self.root}/{bob}/{path}")
+                else:
+                    return []
+        else:
+            return os.listdir(real_path)
 
-# TODO: create AcessWrapper
-# TODO: create commands operations (i.e. share, revoke)
+    # override
+    def fsname(self):
+        return f"sharefs:{self.su.user_id}"
+
+    # override
+    def start(self):
+        self.pki.init()
+        return super().start()
+
+    # TODO: create commands operations (i.e. share, revoke)
+
+    def share(self, file_path, bob):
+        # self.su.share_file(file_path, bob, k_bob_pub)
+        pass
+
+    def revoke(self, file_path, bob):
+        # self.su.revoke_shared_file(file_path, bob, k_bob_pub)
+        pass
 
 def main(args):
     try:
@@ -44,6 +173,9 @@ def main(args):
 
     username = input("Enter username: ")
     password = input("Enter password: ")
-    su = SharingUtility(username, password)
+
+    aw = FSAccessWrapper()
+    su = SharingUtility(username, password, access_wrapper=aw)
     fs = ShareFS(args[1], args[2], su)
-    fuse_mount(fs, f"sharefs:{su.user_id}")
+    aw.fs = fs
+    fs.start()

@@ -218,7 +218,7 @@ class CryptoFS(LoggingMixIn, Operations):
                 new_data = new_data + bytes([padding_size] * padding_size)
 
             # create the cipher and encrypt
-            cipher = self.mkcipher(iv, first_block_num)
+            cipher = self.mkcipher(path, iv, first_block_num)
             ciphertext = cipher.encrypt(new_data)
             #log(">>>> plaintext:")
             #log(new_data)
@@ -267,7 +267,7 @@ class CryptoFS(LoggingMixIn, Operations):
 
     # below are extra functions unrelated to fuse
 
-    def mkcipher(self, iv, first_block_num=0):
+    def mkcipher(self, path, iv, first_block_num=0):
         """Creates a counter and an AES cipher with CTR mode.
         Args:
           iv (bytes):
@@ -276,7 +276,7 @@ class CryptoFS(LoggingMixIn, Operations):
             number of the first block to be used as the counter
         """
 
-        key = self.key_gen(iv)
+        key = self.key_gen(path, iv)
         # the counter starts with the value of iv and adds
         # the offset if any.
         ctr = Counter.new(8 * self.block_size,
@@ -351,7 +351,7 @@ class CryptoFS(LoggingMixIn, Operations):
             return b'', first_block_num, seq_size, file_size, iv
 
         # create the cipher and decrypt
-        cipher = self.mkcipher(iv, first_block_num)
+        cipher = self.mkcipher(path, iv, first_block_num)
         plaintext = cipher.decrypt(blocks)
 
         # if at the end of the file, pad
@@ -365,7 +365,7 @@ class CryptoFS(LoggingMixIn, Operations):
 
         return plaintext, first_block_num, seq_size, file_size, iv
 
-    def key_gen(self, iv):
+    def key_gen(self, path, iv):
         """To be overridden in a child class"""
         # needs to be 32 bytes long
         return b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
@@ -379,14 +379,16 @@ class CryptoFS(LoggingMixIn, Operations):
         path = self.translate_path(path)
         return os.listdir(path)
 
-def fuse_mount(fs, name=None):
-    """Mounts encrypted <root> to <mount> using <fs> (e.g. CryptoFS)"""
-    if LOG:
-        logging.basicConfig(level=logging.DEBUG)
-    if name is None:
-        name = fs.__class__.__name__
-    return FUSE(fs, fs.mount, foreground=True, allow_other=True,
-                fsname=name)
+    def fsname(self):
+        """Label of the filesystem"""
+        return self.__class__.__name__
+
+    def start(self):
+        """Mounts encrypted <root> to <mount> using <fs> (e.g. CryptoFS)"""
+        if LOG:
+            logging.basicConfig(level=logging.DEBUG)
+        return FUSE(self, self.mount, foreground=True, allow_other=True,
+                    fsname=self.fsname())
 
 def main(args):
-    fuse_mount(CryptoFS(args[1], args[2]))
+    CryptoFS(args[1], args[2]).start()
