@@ -34,7 +34,7 @@ class CryptoFS(LoggingMixIn, Operations):
         self.rwlock = Lock()
 
     def __call__(self, op, path, *args):
-        print(f">>> __call__({op}, {path})")
+        # print(f">>> __call__({op}, {path})")
         # path = self.translate_path(path)
         return super(CryptoFS, self).__call__(op, path, *args)
 

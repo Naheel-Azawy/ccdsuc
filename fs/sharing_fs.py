@@ -1,5 +1,8 @@
 import os
 import shutil
+import socket
+import json
+import threading
 
 from errno import EACCES
 from fuse  import FuseOSError
@@ -32,12 +35,12 @@ class FSAccessWrapper(AccessWrapper):
         if not os.path.exists(p):
             return None
         else:
-            with open(p, "r") as f:
+            with open(p, "rb") as f:
                 return f.read()
             return None
 
     def upload_table(self, name, table):
-        with open(f"{self.tables_dir()}/{name}", "w") as f:
+        with open(f"{self.tables_dir()}/{name}", "wb") as f:
             f.write(table)
             return True
         return False
@@ -71,7 +74,6 @@ class FSAccessWrapper(AccessWrapper):
         return p
 
 class ShareFS(CryptoFS):
-
     def __init__(self, root, mount, sharing_util):
         super().__init__(root, mount)
         self.su = sharing_util
@@ -146,15 +148,76 @@ class ShareFS(CryptoFS):
         self.pki.init()
         return super().start()
 
-    # TODO: create commands operations (i.e. share, revoke)
-
     def share(self, file_path, bob):
-        # self.su.share_file(file_path, bob, k_bob_pub)
-        pass
+        k_bob_pub = self.pki.get_key(bob)
+        res, _, _, _ = self.su.share_file(file_path, bob, k_bob_pub)
+        return res != None
 
     def revoke(self, file_path, bob):
-        # self.su.revoke_shared_file(file_path, bob, k_bob_pub)
-        pass
+        k_bob_pub = self.pki.get_key(bob)
+        return self.su.revoke_shared_file(file_path, bob, k_bob_pub)
+
+    def ls_shares(self, file_path):
+        res = []
+        bobs = self.su.list_files_shared_by_us()
+        for bob in bobs:
+            if file_path in bobs[bob]:
+                res.append(bob)
+        return res
+
+    def start_server(self):
+        BUFFER_SIZE = 1024
+        running = True
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(("localhost", 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+        print(f"Server started at :{port}")
+        while running:
+            conn, addr = s.accept()
+
+            # recieving data
+            data = b""
+            while True:
+                tmp = conn.recv(BUFFER_SIZE)
+                data += tmp
+                if not tmp or data.endswith(b"?END?"): break
+
+            msg = f"Command from {addr}: "
+            try:
+                data = data.decode().replace("?END?", "")
+                data = data.split(" ")
+                cmd = data[0]
+                bob = data[1] if data[1] != "None" else None
+                file_path = " ".join(data[2:])
+
+                if cmd == "share":
+                    print(f">>>>>>>> share({file_path}, {bob})")
+                    ret = self.share(file_path, bob)
+                    msg += f"share({file_path}, {bob})"
+                elif cmd == "revoke":
+                    ret = self.revoke(file_path, bob)
+                    msg += f"revoke({file_path}, {bob})"
+                elif cmd == "ls-shares":
+                    ret = self.ls_shares(file_path)
+                    msg += f"ls_shares({file_path})"
+                else:
+                    ret = "unknown"
+                    msg += f"unknown command '{cmd}'"
+            except Exception as e:
+                ret = "error"
+                msg += f"error data={data}"
+                print(e)
+                raise e
+
+            ret = (json.dumps(ret) + "?END?").encode()
+            try:
+                conn.send(ret)
+            except Exception as e:
+                msg += f" error sending result: {ret}"
+                print(e)
+            print(msg)
+        s.close()
 
 def main(args):
     try:
@@ -178,4 +241,5 @@ def main(args):
     su = SharingUtility(username, password, access_wrapper=aw)
     fs = ShareFS(args[1], args[2], su)
     aw.fs = fs
+    threading.Thread(target=fs.start_server).start()
     fs.start()

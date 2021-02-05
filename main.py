@@ -28,7 +28,9 @@ commands = {
     "bcpki": Command("control BlockChain Public Key Infrastructure",
                      "public_key.pki_bc"),
     "fs-mount": Command("mount sharing filesystem <root> to <mount>",
-                        "fs.sharing_fs")
+                        "fs.sharing_fs"),
+    "fs-cmd": Command("Execute a command on a mounted fs",
+                        "fs.sharing_fs_client")
 }
 
 def usage():
