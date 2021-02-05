@@ -11,6 +11,12 @@ from core.sharing   import SharingUtility, AccessWrapper
 from public_key.pki import pki_interface
 from fs.crypto_fs   import CryptoFS
 
+LOG = True
+
+def log(msg):
+    if LOG:
+        print(msg)
+
 class FSAccessWrapper(AccessWrapper):
     def __init__(self):
         self.fs = None
@@ -85,13 +91,14 @@ class ShareFS(CryptoFS):
         super().__init__(root, mount)
         self.su = sharing_util
         self.pki = pki_interface()
+        self.unlinked_ivs = {}
         os.makedirs(f"{self.root}/{self.su.user_id}", exist_ok=True)
 
     # override
     def key_gen(self, path, iv):
-        print(f">>> key_gen({path}, {iv})")
+        log(f">>> key_gen({path}, {iv})")
         if path.startswith("/shared"):
-            print("shared key...")
+            log("shared key...")
             path = path.split("/")
             if path[0] == "":
                 del path[0]
@@ -99,7 +106,7 @@ class ShareFS(CryptoFS):
             if len(path) > 2:
                 path = "/".join(path[2:])
                 shared = self.su.list_files_shared_with_us()
-                print(shared)
+                log(shared)
                 if "/" + path in shared[bob]:
                     path = "/" + path
                 if bob in shared and path in shared[bob]:
@@ -109,9 +116,8 @@ class ShareFS(CryptoFS):
             else:
                 raise FuseOSError(EACCES)
         else:
-            print("normal keygen...")
-            print(self.su.key_gen(iv))
-            print(self.su.key_gen(iv))
+            log("normal keygen...")
+            log(self.su.key_gen(iv))
             return self.su.key_gen(iv)
 
     # override
@@ -170,6 +176,38 @@ class ShareFS(CryptoFS):
         else:
             ret = os.listdir(real_path)
         return ret
+
+    # override
+    def unlink(self, path):
+        """Some programs unlink the file and create a new
+        one while editing. So, we keep the IVs before unlinking
+        for shared files in case of need"""
+        log(f"!!!!!! unlink({path})")
+        origin = path
+        path = self.translate_path(path)
+        if origin.startswith("/shared"):
+            log(f"!!!!-> shared file {origin}, {path}")
+            with open(path, "rb") as f:
+                log("!!! reading...")
+                iv = f.read(self.fs.block_size)
+                log(f"!!! iv={iv}")
+                self.unlinked_ivs[origin] = iv
+                log(self.unlinked_ivs)
+                log("!!! unlinking")
+                return os.unlink(path)
+            raise FuseOSError(EACCES)
+        else:
+            return os.unlink(path)
+
+    # override
+    def read_blocks(self, path, virt_path, size, offset, fh):
+        log("!!!!!!!!!!! custom read_blocks")
+        plaintext, first_block_num, seq_size, file_size, iv = \
+            super().read_blocks(path, virt_path, size, offset, fh)
+        if not iv and virt_path in self.unlinked_ivs:
+            log(f"!!!!!!!!! found iv for {virt_path}: {iv}")
+            iv = self.unlinked_ivs[virt_path]
+        return plaintext, first_block_num, seq_size, file_size, iv
 
     # override
     def fsname(self):
