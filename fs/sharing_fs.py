@@ -15,6 +15,7 @@ class FSAccessWrapper(AccessWrapper):
     def __init__(self):
         self.fs = None
 
+    # override
     def storage_cost(self):
         res = 0
         p = self.tables_dir()
@@ -22,14 +23,16 @@ class FSAccessWrapper(AccessWrapper):
             res += os.path.getsize(f"{p}/{t}")
         return res
 
+    # override
     def list_tables(self):
         p = self.tables_dir()
         if p is not None:
-            return list(map(lambda abs_path: os.path.relpath(abs_path, p),
+            return list(map(lambda abs_path: os.path.basename(abs_path),
                             os.listdir(p)))
         else:
             return []
 
+    # override
     def load_table(self, name):
         p = f"{self.tables_dir()}/{name}"
         if not os.path.exists(p):
@@ -39,12 +42,14 @@ class FSAccessWrapper(AccessWrapper):
                 return f.read()
             return None
 
+    # override
     def upload_table(self, name, table):
         with open(f"{self.tables_dir()}/{name}", "wb") as f:
             f.write(table)
             return True
         return False
 
+    # override
     def load_file_iv(self, file_name):
         p = f"{self.fs.root}/{self.fs.su.user_id}/{file_name}"
         if not os.path.exists(p):
@@ -53,9 +58,11 @@ class FSAccessWrapper(AccessWrapper):
             return f.read(self.fs.block_size)
         return None
 
+    # override
     def file_exists(self, file_name):
         return os.path.exists(f"{self.fs.mount}/{file_name}")
 
+    # override
     def reupload_file(self, su, file_name):
         file_name = f"{self.fs.mount}/{file_name}"
         tmp = f"{file_name}___tmp"
@@ -82,12 +89,19 @@ class ShareFS(CryptoFS):
 
     # override
     def key_gen(self, path, iv):
+        print(f">>> key_gen({path}, {iv})")
         if path.startswith("/shared"):
+            print("shared key...")
             path = path.split("/")
+            if path[0] == "":
+                del path[0]
             bob = path[1] if len(path) >= 2 else None
             if len(path) > 2:
                 path = "/".join(path[2:])
                 shared = self.su.list_files_shared_with_us()
+                print(shared)
+                if "/" + path in shared[bob]:
+                    path = "/" + path
                 if bob in shared and path in shared[bob]:
                     return shared[bob][path]
                 else:
@@ -95,26 +109,34 @@ class ShareFS(CryptoFS):
             else:
                 raise FuseOSError(EACCES)
         else:
+            print("normal keygen...")
+            print(self.su.key_gen(iv))
+            print(self.su.key_gen(iv))
             return self.su.key_gen(iv)
 
     # override
     def translate_path(self, path):
+        ret = None
         if path.startswith("/shared"):
             shared = self.su.list_files_shared_with_us()
             if path == "/shared":
-                return self.root + "/" + self.su.user_id + path
+                ret = self.root + "/" + self.su.user_id + path
             else:
                 path = path.split("/")
+                if path[0] == "":
+                    del path[0]
                 bob = path[1] if len(path) >= 2 else None
                 if len(path) == 2 and bob in shared:
-                    return f"{self.root}/{bob}"
+                    # paths like /shared/bob, just use root/alice/shared attrs
+                    ret = f"{self.root}/{self.su.user_id}/shared"
                 elif len(path) > 2:
                     path = "/".join(path[2:])
-                    return f"{self.root}/{bob}/{path}"
+                    ret = f"{self.root}/{bob}/{path}"
                 else:
                     raise FuseOSError(EACCES)
         else:
-            return self.root + "/" + self.su.user_id + path
+            ret = self.root + "/" + self.su.user_id + path
+        return ret
 
     # override
     def lsdir(self, path):
@@ -122,23 +144,32 @@ class ShareFS(CryptoFS):
         if path == "/":
             if not os.path.isdir(f"{real_path}/shared"):
                 os.makedirs(f"{real_path}/shared")
+        ret = []
         if path.startswith("/shared"):
             shared = self.su.list_files_shared_with_us()
-            # TODO: this doesn't seems to be working
             if path == "/shared":
-                return list(shared.keys())
+                ret = list(shared.keys())
             else:
                 path = path.split("/")
+                if path[0] == "":
+                    del path[0]
                 bob = path[1] if len(path) >= 2 else None
-                if len(path) == 2 and bob in shared:
-                    return shared[bob].keys()
-                elif len(path) > 2:
+                if len(path) >= 2:
                     path = "/".join(path[2:])
-                    return os.listdir(f"{self.root}/{bob}/{path}")
+                    other = os.listdir(f"{self.root}/{bob}/{path}")
+                    allowed = list(shared[bob].keys())
+                    allowed = list(map(lambda p: p if p[0] != '/' else p[1:],
+                                       allowed))
+                    ret = []
+                    # TODO: handle files shared in subdirectories
+                    for f in other:
+                        if f in allowed:
+                            ret.append(f)
                 else:
-                    return []
+                    ret = []
         else:
-            return os.listdir(real_path)
+            ret = os.listdir(real_path)
+        return ret
 
     # override
     def fsname(self):

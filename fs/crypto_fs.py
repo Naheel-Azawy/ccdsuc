@@ -13,7 +13,7 @@ from Crypto.Cipher import AES
 from Crypto.Util   import Counter
 from Crypto.Random import get_random_bytes
 
-LOG = False
+LOG = True
 
 def log(msg):
     if LOG:
@@ -34,8 +34,7 @@ class CryptoFS(LoggingMixIn, Operations):
         self.rwlock = Lock()
 
     def __call__(self, op, path, *args):
-        # print(f">>> __call__({op}, {path})")
-        # path = self.translate_path(path)
+        log(f">>> __call__({op}, {path})")
         return super(CryptoFS, self).__call__(op, path, *args)
 
     def access(self, path, mode):
@@ -91,6 +90,7 @@ class CryptoFS(LoggingMixIn, Operations):
             pass
         if attr['st_size'] < 0:
             attr['st_size'] = 0
+        print(attr)
         return attr
 
     getxattr = None
@@ -173,10 +173,11 @@ class CryptoFS(LoggingMixIn, Operations):
 
     def read(self, path, size, offset, fh):
         log(f">>> read({path}, {size}, {offset}, {fh})")
+        virt_path = path
         path = self.translate_path(path)
         with self.rwlock:
             plaintext, first_block_num, seq_size, file_size, iv = \
-                self.read_blocks(path, size, offset, fh)
+                self.read_blocks(path, virt_path, size, offset, fh)
 
             # return only the needed parts
             offset_rem = offset % self.block_size
@@ -184,6 +185,7 @@ class CryptoFS(LoggingMixIn, Operations):
 
     def write(self, path, data, offset, fh):
         log(f">>> write({path}, len:{len(data)}, {offset}, {fh})")
+        virt_path = path
         path = self.translate_path(path)
         size = len(data)
         with self.rwlock:
@@ -192,8 +194,10 @@ class CryptoFS(LoggingMixIn, Operations):
             fh = os.open(path, os.O_RDWR)
             
             plaintext, first_block_num, seq_size, file_size, iv = \
-                self.read_blocks(path, size, offset, fh)
-            is_new = file_size == 0
+                self.read_blocks(path, virt_path, size, offset, fh)
+            is_new = not bool(iv)
+
+            log(f">>>> {plaintext}, {first_block_num}, {seq_size}, {file_size}, {iv}\n")
 
             if is_new:
                 log(">>>> new file")
@@ -218,7 +222,7 @@ class CryptoFS(LoggingMixIn, Operations):
                 new_data = new_data + bytes([padding_size] * padding_size)
 
             # create the cipher and encrypt
-            cipher = self.mkcipher(path, iv, first_block_num)
+            cipher = self.mkcipher(virt_path, iv, first_block_num)
             ciphertext = cipher.encrypt(new_data)
             #log(">>>> plaintext:")
             #log(new_data)
@@ -270,6 +274,8 @@ class CryptoFS(LoggingMixIn, Operations):
     def mkcipher(self, path, iv, first_block_num=0):
         """Creates a counter and an AES cipher with CTR mode.
         Args:
+          path (str):
+            the virtual path of the file from the mount point
           iv (bytes):
             16 bytes initialization vector
           first_block_num (int):
@@ -284,8 +290,8 @@ class CryptoFS(LoggingMixIn, Operations):
         cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
         return cipher
 
-    def read_blocks(self, path, size, offset, fh):
-        log(f">>>> read_blocks({path}, {size}, {offset}, {fh})")
+    def read_blocks(self, path, virt_path, size, offset, fh):
+        log(f">>>> read_blocks({path}, {virt_path}, {size}, {offset}, {fh})")
 
         if not os.path.exists(path):
             log("does not exist")
@@ -303,18 +309,18 @@ class CryptoFS(LoggingMixIn, Operations):
         if len(iv) != self.block_size:
             # empty or tiny corrupted file
             log(f">>>> err: empty or tiny corrupted file (len(iv) = {len(iv)})")
-            return b'', 0, 0, 0, b''
+            return b'', 0, 0, 0, iv
 
         try:
             padding_size = os.read(fh, 1)
         except:
             log(">>>> err: couldn't get padding size")
-            return b'', 0, 0, 0, b''
+            return b'', 0, 0, 0, iv
 
         if len(padding_size) != 1:
             # empty or tiny corrupted file
             log(">>>> err: empty or tiny corrupted file (padding size too small)")
-            return b'', 0, 0, 0, b''
+            return b'', 0, 0, 0, iv
         else:
             padding_size = int.from_bytes(padding_size, "big")
 
@@ -351,7 +357,7 @@ class CryptoFS(LoggingMixIn, Operations):
             return b'', first_block_num, seq_size, file_size, iv
 
         # create the cipher and decrypt
-        cipher = self.mkcipher(path, iv, first_block_num)
+        cipher = self.mkcipher(virt_path, iv, first_block_num)
         plaintext = cipher.decrypt(blocks)
 
         # if at the end of the file, pad
