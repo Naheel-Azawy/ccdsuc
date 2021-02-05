@@ -148,7 +148,7 @@ def revocation_benchmark():
                 f_data, f_data_enc = aw.fake_file(alice, fname, size=size)
                 alice.share_file(fname, bob.user_id, bob.keys["pub"])
                 start = time.time()
-                ret = alice.revoke_shared_file2(fname, bob.user_id, keys_getter)
+                ret = alice.revoke_shared_file(fname, bob.user_id, keys_getter)
                 end = time.time()
                 dur += (end - start) * 1000
             dur /= times
@@ -194,7 +194,7 @@ def revocation_benchmark():
                 # print(alice.list_files_shared_by_us())
                 # print()
                 start = time.time()
-                ret = alice.revoke_shared_file2(fname, bob.user_id, keys_getter)
+                ret = alice.revoke_shared_file(fname, bob.user_id, keys_getter)
                 end = time.time()
                 dur += (end - start) * 1000
             dur /= times
@@ -286,8 +286,14 @@ def sharing_test():
 
     print()
 
+    def keys_getter(user):
+        if user == bob.user_id:
+            return bob.keys["pub"]
+        else:
+            raise Exception(f"Unknown user {user}")
+
     print("** Revoking Bob from accessing foo.txt (by Alice)")
-    ret = alice.revoke_shared_file("foo.txt", bob.user_id, bob.keys["pub"])
+    ret = alice.revoke_shared_file("foo.txt", bob.user_id, keys_getter)
     print(f"** Revoke is {ret}")
 
     print("** Files shared by Alice:")
@@ -466,7 +472,7 @@ def revocation_test():
             return bob2.keys["pub"]
         else:
             raise Exception(f"Unknown user {user}")
-    ret = alice.revoke_shared_file2("foo.txt", bob1.user_id, keys_getter)
+    ret = alice.revoke_shared_file("foo.txt", bob1.user_id, keys_getter)
     print(f"** Revoke is {ret}")
 
     print("** Files shared by Alice:")

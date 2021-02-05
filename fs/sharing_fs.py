@@ -124,6 +124,7 @@ class ShareFS(CryptoFS):
                 os.makedirs(f"{real_path}/shared")
         if path.startswith("/shared"):
             shared = self.su.list_files_shared_with_us()
+            # TODO: this doesn't seems to be working
             if path == "/shared":
                 return list(shared.keys())
             else:
@@ -154,8 +155,7 @@ class ShareFS(CryptoFS):
         return res != None
 
     def revoke(self, file_path, bob):
-        k_bob_pub = self.pki.get_key(bob)
-        return self.su.revoke_shared_file(file_path, bob, k_bob_pub)
+        return self.su.revoke_shared_file(file_path, bob, self.pki.get_key)
 
     def ls_shares(self, file_path):
         res = []
@@ -192,7 +192,6 @@ class ShareFS(CryptoFS):
                 file_path = " ".join(data[2:])
 
                 if cmd == "share":
-                    print(f">>>>>>>> share({file_path}, {bob})")
                     ret = self.share(file_path, bob)
                     msg += f"share({file_path}, {bob})"
                 elif cmd == "revoke":

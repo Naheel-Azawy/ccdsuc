@@ -350,6 +350,10 @@ class SharingUtility(object):
     # share a file from Alice to Bob
     def share_file(self, file_path, bob_id, k_bob_pub):
 
+        # check if this is really needed
+        if self.is_shared(file_path, bob_id):
+            return None, None, None, None
+
         # clean the file name
         file_path = self.access_wrapper.name(file_path)
 
@@ -440,58 +444,13 @@ class SharingUtility(object):
         return None
 
     # revoke bob from accessing a file
-    def revoke_shared_file(self, file_path, bob_id, k_bob_pub):
-
-        # clean the file name
-        file_path = self.access_wrapper.name(file_path)
-
-        # load the files shared by Alice with anyone else
-        T_A_others = self.load_table()
-        if T_A_others == None:
-            return False
-
-        # we did not share anything with bob before
-        if bob_id not in T_A_others:
-            return False
-
-        # list of file paths shared with Bob from Alice
-        files_shared_with_bob = T_A_others[bob_id]
-
-        # this file is not shared with bob
-        if file_path not in files_shared_with_bob:
-            return False
-
-        # remove the revoked file from the list
-        files_shared_with_bob.remove(file_path)
-
-        # re-construct Bob's table (by Alice)
-        T_A_B = {}
-        for f in files_shared_with_bob:
-            T_A_B[f] = self.key_gen(
-                    self.access_wrapper.load_file_iv(f))
-
-        # serialize tables
-        T_A_B      = self.access_wrapper.serialize(T_A_B)
-        T_A_others = self.access_wrapper.serialize(T_A_others)
-
-        # upload T_A_B
-        T_A_B_enc = RSA_enc(T_A_B, k_bob_pub)
-        self.upload_table(self.get_table_name(
-            alice_id=self.alice_id,
-            bob_id=bob_id), T_A_B_enc)
-
-        # upload T_A_others
-        T_A_others_enc = AES_enc(T_A_others, self.k_alice)
-        self.upload_table(self.get_table_name(), T_A_others_enc)
-
-        # upload the file
-        return self.access_wrapper.reupload_file(self, file_path)
-
-    # revoke bob from accessing a file (experimental)
     # k_pub_getter: function(user_id) returns RSA public key
-    # TODO: finalize and replace the old one
-    def revoke_shared_file2(self, file_path, bob_id, k_pub_getter):
+    def revoke_shared_file(self, file_path, bob_id, k_pub_getter):
         # print(f">>> revoke_shared_file({file_path}, {bob_id}, {k_pub_getter})")
+
+        # check if this is really needed
+        if not self.is_shared(file_path, bob_id):
+            return False
 
         # clean the file name
         file_path = self.access_wrapper.name(file_path)
