@@ -57,6 +57,8 @@ class FSAccessWrapper(AccessWrapper):
 
     # override
     def load_file_iv(self, file_name):
+        if self.fs is None:
+            return None
         p = f"{self.fs.root}/{self.fs.su.user_id}/{file_name}"
         if not os.path.exists(p):
             return None
@@ -66,10 +68,17 @@ class FSAccessWrapper(AccessWrapper):
 
     # override
     def file_exists(self, file_name):
+        if self.fs is None:
+            return False
         return os.path.exists(f"{self.fs.mount}/{file_name}")
 
     # override
     def reupload_file(self, su, file_name):
+        if self.fs is None:
+            return False
+        # remove unlinked iv if any
+        if file_name in self.fs.unlinked_ivs:
+            del self.fs.unlinked_ivs[file_name]
         file_name = f"{self.fs.mount}/{file_name}"
         tmp = f"{file_name}___tmp"
         shutil.copy2(file_name, tmp)
@@ -179,8 +188,8 @@ class ShareFS(CryptoFS):
 
     # override
     def unlink(self, path):
-        """Some programs unlink the file and create a new
-        one while editing. So, we keep the IVs before unlinking
+        """Some programs (like emacs) unlink the file and create a
+        new one while editing. So, we keep the IVs before unlinking
         for shared files in case of need"""
         log(f"!!!!!! unlink({path})")
         origin = path
@@ -189,9 +198,10 @@ class ShareFS(CryptoFS):
             log(f"!!!!-> shared file {origin}, {path}")
             with open(path, "rb") as f:
                 log("!!! reading...")
-                iv = f.read(self.fs.block_size)
+                iv = f.read(self.block_size)
                 log(f"!!! iv={iv}")
-                self.unlinked_ivs[origin] = iv
+                if iv:
+                    self.unlinked_ivs[origin] = iv
                 log(self.unlinked_ivs)
                 log("!!! unlinking")
                 return os.unlink(path)
@@ -208,6 +218,23 @@ class ShareFS(CryptoFS):
             log(f"!!!!!!!!! found iv for {virt_path}: {iv}")
             iv = self.unlinked_ivs[virt_path]
         return plaintext, first_block_num, seq_size, file_size, iv
+
+    # override
+    def rename(self, old, new):
+        """Some other programs (like libreoffice) create a tmp
+        file. Once done, mv the tmp file to the original one"""
+        old_mount = f"{self.mount}/{old}"
+        new_mount = f"{self.mount}/{new}"
+        old_root = self.translate_path(old)
+        new_root = self.translate_path(new)
+        if os.path.exists(new_mount) and False: # TODO: something wrong here
+            # copying will keep the IV of the dest
+            # file and re-encrypt the src file
+            log(f"!!!!! moving by copying {old} to {new}")
+            shutil.copy2(old_mount, new_mount)
+            return os.unlink(old_root)
+        else:
+            return os.rename(old_root, new_root)
 
     # override
     def fsname(self):

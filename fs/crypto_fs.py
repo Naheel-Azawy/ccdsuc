@@ -90,7 +90,6 @@ class CryptoFS(LoggingMixIn, Operations):
             pass
         if attr['st_size'] < 0:
             attr['st_size'] = 0
-        print(attr)
         return attr
 
     getxattr = None
