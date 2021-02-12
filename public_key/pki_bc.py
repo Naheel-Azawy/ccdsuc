@@ -1,6 +1,6 @@
 """BlockChain PKI. Intefaces with the CA"""
 
-from public_key.pki       import PKI
+from public_key.pki_base  import PKI
 from public_key.pki_bc_ca import CA
 from core.sharing         import gen_keys_from, stringify_keys
 from Crypto.PublicKey     import RSA
@@ -52,8 +52,8 @@ def main(args):
         print(" python pki_bc.py deploy")
         print(" python pki_bc.py ls")
         print(" python pki_bc.py certs")
-        print(" python pki_bc.py get DEVICE_ID")
-        print(" python pki_bc.py add DEVICE_ID PASSPHRASE VALID_TO")
+        print(" python pki_bc.py get ID")
+        print(" python pki_bc.py add ID PASSPHRASE VALID_TO")
         exit(1)
 
     if len(args) < 2: usage()
@@ -81,7 +81,7 @@ def main(args):
         pki.init()
         print(json.dumps(pki.ca.get_certs(), indent=2))
     elif cmd == "deploy":
-        os.system("cd ./bcpki && truffle migrate --compile-all --reset")
+        os.system("cd ./public_key/bcpki && truffle migrate --compile-all --reset")
     elif cmd == "keys-pv":
         if len(args) < 1: usage()
         keys = stringify_keys(gen_keys_from(args[0]))

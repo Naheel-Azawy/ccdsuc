@@ -5,7 +5,7 @@ import json
 import os
 import hashlib
 
-CA_JSON = "./bcpki/build/contracts/CA.json"
+CA_JSON = "./public_key/bcpki/build/contracts/CA.json"
 #DEF_ADDR = "http://127.0.0.1:8545@0x3BdF8A6a7716D772A2cf7b6183678D005Ee00Ad9"
 DEF_ADDR = "http://127.0.0.1:8545@"
 

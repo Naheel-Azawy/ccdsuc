@@ -1,19 +1,7 @@
-"""Public Key Infrastructure base interface"""
+"""Public Key Infrastructure interface"""
 
+from public_key.pki_base  import PKI
 from Crypto.PublicKey import RSA
-
-class PKI:
-    """Public Key Infrastructure interface"""
-    def init(self):
-        pass
-
-    def get_key(self, device_id: str):
-        raise Exception("Not implemented")
-
-    def add_device(self, device_id: str,
-                   device_passphrase: str,
-                   valid_to: str):
-        raise Exception("Not implemented")
 
 class FakePKI(PKI):
     """Fake PKI"""
@@ -55,8 +43,8 @@ QQIDAQAB
         pass
 
 try:
-    import pki_bc
-    pki_interface = pki_bc.BCPKI
+    import public_key.pki_bc
+    pki_interface = public_key.pki_bc.BCPKI
 except ImportError:
     print("WRANING: failed importing BCPKI, using fake PKI")
     pki_interface = FakePKI

@@ -1,0 +1,6 @@
+* Public keys
+  - start Ganache and set truffle project to ./public_key/bcpki/truffle-config.js
+  - ~./main.py bcpki deploy~
+  - ~export ETH_ADDR='http://<IP>:<PORT>@<CONTRACT_ADDRESS>'~
+    e.g. ~export ETH_ADDR='http://localhost:8545@0x19cC8df7a3b8e5d031E77120948D036890914eb7'~
+  - add certificates with ~./main.py bcpki add ...~

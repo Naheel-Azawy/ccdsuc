@@ -11,8 +11,7 @@ from core.sharing   import SharingUtility, AccessWrapper
 from public_key.pki import pki_interface
 from fs.crypto_fs   import CryptoFS
 
-LOG = True
-
+LOG = False
 def log(msg):
     if LOG:
         print(msg)
