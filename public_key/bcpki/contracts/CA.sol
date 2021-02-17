@@ -7,7 +7,7 @@ contract CA is Ownable {
 
     uint constant VERSION = 2;
 
-    struct X509 {
+    struct Certificate {
         uint    version;
         string  valid_to;
         string  public_key;
@@ -18,7 +18,7 @@ contract CA is Ownable {
     }
 
     // Certificates, referenced by cert hash
-    mapping(string => X509) certs;
+    mapping(string => Certificate) certs;
     mapping(uint => string) certs_map;
     uint certs_count;
 
@@ -28,7 +28,7 @@ contract CA is Ownable {
     uint crl_count;
 
     // Tiny hack to make solidity work...
-    X509 NULL;
+    Certificate NULL;
 
     constructor() public {
         certs_count = 0;
@@ -42,7 +42,7 @@ contract CA is Ownable {
         if (certs[cert_hash].exist) {
             return false;
         } else {
-            X509 memory c = X509(VERSION,
+            Certificate memory c = Certificate(VERSION,
                                  valid_to,
                                  public_key,
                                  owner,
@@ -66,7 +66,7 @@ contract CA is Ownable {
     }
 
     function get_cert(string memory cert_hash)
-        private view returns(X509 memory) {
+        private view returns(Certificate memory) {
         if (!certs[cert_hash].exist) {
             return NULL;
         } else {
@@ -84,8 +84,8 @@ contract CA is Ownable {
     }
 
     function get_crl()
-        public view returns(X509[] memory) {
-        X509[] memory list = new X509[](crl_count);
+        public view returns(Certificate[] memory) {
+        Certificate[] memory list = new Certificate[](crl_count);
         for (uint i = 0; i < crl_count; ++i) {
             list[i] = certs[crl_map[i]];
         }
@@ -93,8 +93,8 @@ contract CA is Ownable {
     }
 
     function get_certs()
-        public view returns(X509[] memory) {
-        X509[] memory list = new X509[](certs_count - crl_count);
+        public view returns(Certificate[] memory) {
+        Certificate[] memory list = new Certificate[](certs_count - crl_count);
         for (uint i = 0; i < certs_count; ++i) {
             if (!crl[certs_map[i]])
                 list[i] = certs[certs_map[i]];
@@ -103,8 +103,8 @@ contract CA is Ownable {
     }
 
     function get_all_certs()
-        public view returns(X509[] memory) {
-        X509[] memory list = new X509[](certs_count);
+        public view returns(Certificate[] memory) {
+        Certificate[] memory list = new Certificate[](certs_count);
         for (uint i = 0; i < certs_count; ++i) {
             list[i] = certs[certs_map[i]];
         }
