@@ -1,7 +1,6 @@
 """Tests, examples, and benchmarks"""
 
 import os
-import sys
 import time
 from tqdm import tqdm
 from core.sharing import *
@@ -498,9 +497,9 @@ def revocation_test():
     print(f_shared_data == f_data)
     print("** Loaded foo.txt = " + str(f_shared_data))
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "benchmark":
-        if len(sys.argv) > 2 and sys.argv[2] == "clean":
+def main(args):
+    if len(args) > 1 and args[1] == "benchmark":
+        if len(args) > 2 and args[2] == "clean":
             os.system(f"rm -rf ./benchmarks")
             exit()
         if not os.path.isdir("./benchmarks"):

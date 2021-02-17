@@ -15,6 +15,12 @@ def ls_commands(args):
 commands = {
     "commands": Command("list the below commands",
                         ls_commands),
+    "bcpki": Command("control BlockChain Public Key Infrastructure",
+                     "public_key.pki_bc"),
+    "fs-mount": Command("mount sharing filesystem <root> to <mount>",
+                        "fs.sharing_fs"),
+    "fs-cmd": Command("Execute a command on a mounted fs",
+                        "fs.sharing_fs_client"),
     "iot-server": Command("start the sample TCP server",
                           "iot.tcp_server"),
     "iot-sens-fake": Command("fake sensor",
@@ -25,22 +31,16 @@ commands = {
                             "iot.device_sensor_ldr"),
     "iot-act-led": Command("LED with raspberry pi",
                            "iot.device_actuator_led"),
-    "bcpki": Command("control BlockChain Public Key Infrastructure",
-                     "public_key.pki_bc"),
-    "fs-mount": Command("mount sharing filesystem <root> to <mount>",
-                        "fs.sharing_fs"),
-    "fs-cmd": Command("Execute a command on a mounted fs",
-                        "fs.sharing_fs_client")
+    "test": Command("run the test functions",
+                    "testing.test")
 }
 
 def usage():
     print("usage: thething COMMAND [ARGS]")
     print("COMMANDS:")
     for cmd in commands:
-        print(f"  {cmd}\t{commands[cmd].det}")
-        # if commands[cmd].args is not None:
-        #     args = ", ".join(commands[cmd].args)
-        #     print(f"  \tARGS: {args}")
+        if cmd != "test":
+            print("  %-15s %s" % (cmd, commands[cmd].det))
 
 def main():
     if len(argv) > 1 and argv[1] in commands:
