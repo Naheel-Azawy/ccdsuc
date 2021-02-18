@@ -2,8 +2,7 @@
 
 from public_key.pki_base  import PKI
 from public_key.pki_bc_ca import CA
-from core.sharing         import gen_keys_from, stringify_keys
-from Crypto.PublicKey     import RSA
+from core.sharing         import gen_keys_from, stringify_keys, PublicKey
 
 class BCPKI(PKI):
     """BlockChain PKI"""
@@ -18,7 +17,7 @@ class BCPKI(PKI):
                 key = "-----BEGIN PUBLIC KEY-----\n" + \
                     cert["public_key"] + \
                     "\n-----END PUBLIC KEY-----"
-                return RSA.import_key(key)
+                return PublicKey.import_key(key)
         return None
 
     def list_ids(self):
@@ -58,12 +57,12 @@ def main(args):
         print(" $ export ETH_ADDR='http://<IP>:<PORT>@<CONTRACT_ADDRESS>'")
         print("")
         print("COMMANDS:")
-        print(" deploy")
-        print(" ls")
-        print(" certs")
-        print(" get <ID>")
-        print(" add <ID> <PASSPHRASE> <VALID_TO>")
-        print(" revoke <ID>")
+        print("  deploy")
+        print("  ls")
+        print("  certs")
+        print("  get <ID>")
+        print("  add <ID> <PASSPHRASE> <VALID_TO>")
+        print("  revoke <ID>")
 
     if len(args) < 2:
         usage()

@@ -1,10 +1,9 @@
 """The main interface to any IoT device"""
 
-from public_key.pki   import pki_interface
-from iot.tcp_client   import Server
-from iot.sharing_tcp  import TCPAccessWrapper
-from core.sharing     import SharingUtility, gen_keys_from
-from Crypto.PublicKey import RSA
+from public_key.pki  import pki_interface
+from iot.tcp_client  import Server
+from iot.sharing_tcp import TCPAccessWrapper
+from core.sharing    import SharingUtility
 
 import os
 import time

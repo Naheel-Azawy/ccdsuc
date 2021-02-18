@@ -18,7 +18,7 @@ def speed_benchmark_helper(sharing):
         dur_dec = 0
         times = 10
         for _ in range(times):
-            iv = Random.new().read(AES.block_size)
+            iv = Random.new().read(block_size)
             data = bytearray(size)
 
             # encryption
@@ -27,18 +27,18 @@ def speed_benchmark_helper(sharing):
                 key = su.key_gen(iv)
             else:
                 key = fixed_key
-            ciphertext = AES_enc(data, key, iv)
+            ciphertext = sym_enc(data, key, iv)
             end = time.time()
             dur_enc += (end - start) * 1000
 
             # decryption
             start = time.time()
             if sharing:
-                iv = ciphertext[:AES.block_size]
+                iv = ciphertext[:block_size]
                 key = su.key_gen(iv)
             else:
                 key = fixed_key
-            plaintext = AES_dec(ciphertext, key)
+            plaintext = sym_dec(ciphertext, key)
             end = time.time()
             dur_dec += (end - start) * 1000
 
@@ -51,7 +51,7 @@ def speed_benchmark():
     print("* Encryption/decryption speed benchmark")
 
     print("** RUNNING SHARING TEST")
-    p = "./benchmarks/test_sharing_speed.csv"
+    p = "./testing/benchmarks/test_sharing_speed.csv"
     if not os.path.exists(p):
         with open(p, "w") as f:
             f.write(speed_benchmark_helper(True))
@@ -59,7 +59,7 @@ def speed_benchmark():
         print(f"{p} already exist")
 
     print("** RUNNING NO SHARING TEST")
-    p = "./benchmarks/test_no_sharing_speed.csv"
+    p = "./testing/benchmarks/test_no_sharing_speed.csv"
     if not os.path.exists(p):
         with open(p, "w") as f:
             f.write(speed_benchmark_helper(False))
@@ -70,7 +70,7 @@ def tables_size_benchmark():
     print("* Tables storage cost benchmark")
 
     print("** RUNNING N VS COST")
-    p = "./benchmarks/test_sharing_N_vs_cost.csv"
+    p = "./testing/benchmarks/test_sharing_N_vs_cost.csv"
     if os.path.exists(p):
         print(f"{p} already exist")
     else:
@@ -96,7 +96,7 @@ def tables_size_benchmark():
             f.write(res)
 
     print("** RUNNING U VS COST")
-    p = "./benchmarks/test_sharing_U_vs_cost.csv"
+    p = "./testing/benchmarks/test_sharing_U_vs_cost.csv"
     if os.path.exists(p):
         print(f"{p} already exist")
     else:
@@ -128,7 +128,7 @@ def revocation_benchmark():
     print("* Revocation benchmark")
 
     print("** RUNNING N VS TIME")
-    p = "./benchmarks/test_sharing_revocation_speed_vs_size.csv"
+    p = "./testing/benchmarks/test_sharing_revocation_speed_vs_size.csv"
     if not os.path.exists(p):
         aw = FakeAccessWrapper()
         alice = SharingUtility("alice", "abc", access_wrapper=aw)
@@ -159,7 +159,7 @@ def revocation_benchmark():
         print(f"{p} already exist")
 
     print("** RUNNING U VS TIME")
-    p = "./benchmarks/test_sharing_revocation_speed_vs_U.csv"
+    p = "./testing/benchmarks/test_sharing_revocation_speed_vs_U.csv"
     if not os.path.exists(p):
 
         # all will have the same keys, just for simplicity of testing
@@ -307,8 +307,8 @@ def sharing_test():
     print(f_shared_data == f_data)
     print("** Loaded foo.txt = " + str(f_shared_data))
 
-def aes_test():
-    print("* AES test")
+def sym_test():
+    print("* Symmetric crypto test")
     print("building keys...")
     t = time.time()
     keys = gen_keys_from("passs")
@@ -317,17 +317,17 @@ def aes_test():
     print(f"encrypting...")
     print(f"msg = {msg}")
     t = time.time()
-    enc = AES_enc(msg, keys["sym"])
+    enc = sym_enc(msg, keys["sym"])
     print(f"done {time.time() - t}")
     print(f"enc = {enc.hex()}")
     print("decrypting")
     t = time.time()
-    dec = AES_dec(enc, keys["sym"])
+    dec = sym_dec(enc, keys["sym"])
     print(f"done {time.time() - t}")
     print(f"dec = {dec}")
 
-def rsa_test():
-    print("* RSA test")
+def asym_test():
+    print("* Asymmetric crypto test")
     print("building keys...")
     t = time.time()
     keys = gen_keys_from("passs")
@@ -336,12 +336,12 @@ def rsa_test():
     print(f"encrypting...")
     print(f"msg = {msg}")
     t = time.time()
-    enc = RSA_enc(msg, keys["pub"])
+    enc = asym_enc(msg, keys["pub"])
     print(f"done {time.time() - t}")
     print(f"enc = {enc.hex()}")
     print("decrypting")
     t = time.time()
-    dec = RSA_dec(enc, keys["priv"])
+    dec = asym_dec(enc, keys["priv"])
     print(f"done {time.time() - t}")
     print(f"dec = {dec}")
 
@@ -363,20 +363,20 @@ def keys_caching_test():
     su = SharingUtility("alice", "abc", keys_cache="./keys-test.json")
 
 def pki_test():
-    from pki_bc import BCPKI
-    from Crypto.PublicKey import RSA
+    from public_key.pki_bc import BCPKI
+    from core.sharing import PublicKey
     pki = BCPKI()
     pki.init()
     print("* Ceritificates before")
-    print(pki.list_devices())
+    print(pki.list_ids())
     print()
 
     print("* Adding the device...")
-    pki.add_device("led-0", "deadbeef", "2077-01-01")
+    pki.enroll("led-0", "deadbeef", "2077-01-01")
     print()
 
     print("* Ceritificates after")
-    print(pki.list_devices())
+    print(pki.list_ids())
     print()
 
     print("* Getting the device key...")
@@ -393,9 +393,9 @@ def pki_test():
 
 def server_test():
     import threading
-    from tcp_client import Server
+    from iot.tcp_client import Server
 
-    threading.Thread(target=lambda: os.system("python3 ./tcp_server.py")) \
+    threading.Thread(target=lambda: os.system("python3 ./main.py iot-server")) \
              .start()
     s = Server("127.0.0.1", 2010)
     t = "foo.txt"
@@ -405,7 +405,7 @@ def server_test():
     print(f"Getting {t}...")
     got = s.get(t)
     print(got)
-    print("Content {c} of {t} is equivalent:")
+    print(f"Content {c} of {t} is equivalent:")
     print(c == got)
 
 def reupload_test():
@@ -420,7 +420,7 @@ def reupload_test():
     print("** Decrypting it")
     iv = aw.load_file_iv("foo")
     key = alice.key_gen(iv)
-    data = AES_dec(f_data_enc, key) # decrypt
+    data = sym_dec(f_data_enc, key) # decrypt
     print(data)
 
     print("** Re-uploading")
@@ -432,7 +432,7 @@ def reupload_test():
     print("** Decrypting it")
     iv = aw.load_file_iv("foo")
     key = alice.key_gen(iv)
-    data = AES_dec(f_loaded, key) # decrypt
+    data = sym_dec(f_loaded, key) # decrypt
     print(data)
 
 def revocation_test():
@@ -499,20 +499,21 @@ def revocation_test():
 
 def main(args):
     if len(args) > 1 and args[1] == "benchmark":
+        out = "./testing/benchmarks"
         if len(args) > 2 and args[2] == "clean":
-            os.system(f"rm -rf ./benchmarks")
-            exit()
-        if not os.path.isdir("./benchmarks"):
-            os.mkdir("./benchmarks")
+            os.system(f"rm -rf {out}")
+            return
+        if not os.path.isdir(out):
+            os.mkdir(out)
         speed_benchmark()
         tables_size_benchmark()
         revocation_benchmark()
-        exit()
+        return
     #tables_json_vs_pickle()
     #tables_test()
     #sharing_test()
-    #aes_test()
-    #rsa_test()
+    #sym_test()
+    #asym_test()
     #keys_test()
     #keys_caching_test()
     #pki_test()

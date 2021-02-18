@@ -1,7 +1,7 @@
 """Public Key Infrastructure interface"""
 
-from public_key.pki_base  import PKI
-from Crypto.PublicKey import RSA
+from public_key.pki_base import PKI
+from core.sharing        import PublicKey
 
 class FakePKI(PKI):
     """Fake PKI"""
@@ -35,7 +35,7 @@ QQIDAQAB
             key = self.keys[device_id]
         else:
             key = self.keys["alice-sens"]
-        return RSA.import_key(key)
+        return PublicKey.import_key(key)
 
     def add_device(self, device_id: str,
                    device_passphrase: str,

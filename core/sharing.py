@@ -9,25 +9,34 @@ import json
 import time
 from Crypto              import Random
 from Crypto.Cipher       import AES, PKCS1_OAEP
-from Crypto.PublicKey    import RSA
+from Crypto.PublicKey    import RSA, ECC
+from Crypto.Util         import Counter
 from Crypto.Util.Padding import pad, unpad
+
+# set the public key type, RSA or ECC
+# stick to RSA for now as ECC is not yet supported
+# in pycryptodome.
+PublicKey = RSA
+
+# follow AES block size
+block_size = AES.block_size
 
 # https://pycryptodome.readthedocs.io/en/latest/src/examples.html
 # https://gist.github.com/syedrakib/241b68f5aeaefd7ef8e2
 # https://docs.python.org/3/library/random.html
 # https://www.pycryptodome.org/en/latest/src/public_key/rsa.html?highlight=rsa#module-Crypto.PublicKey.RSA
-
-# generate: AES key, RSA private key, RSA public key
-# from a passphrase
+# https://www.pycryptodome.org/en/latest/src/public_key/ecc.html
 
 def gen_keys_from(passphrase):
+    """Generates a symmetric, public, and private keys
+    from a given passphrase"""
 
     # symmetric key used for AES
 
     k_sym = hashlib.sha256(passphrase.encode()).digest()
 
-    # for RSA, we seed the RNG with the passphrase and
-    # give the RNG to RSA generator
+    # for RSA/ECC, we seed the RNG with the passphrase and
+    # give the RNG to the generator
 
     random.seed(passphrase)
 
@@ -35,8 +44,13 @@ def gen_keys_from(passphrase):
         return bytearray(random.getrandbits(8)
                          for _ in range(nbytes))
 
-    k_priv = RSA.generate(2048, my_rand)
-    k_pub  = k_priv.publickey()
+    if PublicKey == RSA:
+        k_priv = PublicKey.generate(bits=2048, randfunc=my_rand)
+    elif PublicKey == ECC:
+        k_priv = PublicKey.generate(curve="P-256", randfunc=my_rand)
+    else:
+        raise Exception("Unknown public key type")
+    k_pub = k_priv.public_key()
 
     return { "sym": k_sym, "priv": k_priv, "pub": k_pub }
 
@@ -50,44 +64,50 @@ def stringify_keys(keys):
 def unstringify_keys(str_keys):
     return {
         "sym":  base64.b64decode(str_keys["sym"].encode()),
-        "priv": RSA.import_key(str_keys["priv"]),
-        "pub":  RSA.import_key(str_keys["pub"])
+        "priv": PublicKey.import_key(str_keys["priv"]),
+        "pub":  PublicKey.import_key(str_keys["pub"])
     }
 
 # tiny cyphers
 
-def AES_enc(data, key, iv=None):
-    cipher = AES.new(key, AES.MODE_CBC, iv=iv)
-    ciphertext = cipher.encrypt(pad(data, AES.block_size))
-    return cipher.iv + ciphertext
+def ctr_from_iv(iv):
+    iv = int.from_bytes(iv, "big") if iv is not None else 0
+    return Counter.new(8 * AES.block_size, initial_value=iv)
 
-def AES_dec(data, key):
+def sym_enc(data, key, iv=None):
+    if iv is None:
+        iv = Random.new().read(AES.block_size)
+    cipher = AES.new(key, AES.MODE_CTR, counter=ctr_from_iv(iv))
+    ciphertext = cipher.encrypt(pad(data, AES.block_size))
+    return iv + ciphertext
+
+def sym_dec(data, key):
     iv = data[:AES.block_size]
     ciphertext = data[AES.block_size:]
-    cipher = AES.new(key, AES.MODE_CBC, iv)
+    cipher = AES.new(key, AES.MODE_CTR, counter=ctr_from_iv(iv))
     return unpad(cipher.decrypt(ciphertext), AES.block_size)
 
-def RSA_enc(data, key):
+def asym_enc(data, key):
     session_key = secrets.token_bytes(nbytes=int(AES.key_size[-1]))
 
-    # Encrypt the session key with the public RSA key
-    cipher_rsa = PKCS1_OAEP.new(key)
-    session_key_enc = cipher_rsa.encrypt(session_key)
+    # Encrypt the session key with the public key
+    cipher_pub = PKCS1_OAEP.new(key)
+    session_key_enc = cipher_pub.encrypt(session_key)
 
     # Encrypt the data with the AES session key
-    ciphertext = AES_enc(data, session_key)
+    ciphertext = sym_enc(data, session_key)
     return session_key_enc + ciphertext
 
-def RSA_dec(data, key):
+def asym_dec(data, key):
     session_key_enc = data[:AES.key_size[-1] * 8]
     ciphertext = data[AES.key_size[-1] * 8:]
 
     # Decrypt the session key
-    cipher_rsa = PKCS1_OAEP.new(key)
-    session_key = cipher_rsa.decrypt(session_key_enc)
+    cipher_pub = PKCS1_OAEP.new(key)
+    session_key = cipher_pub.decrypt(session_key_enc)
 
     # Decrypt the data
-    return AES_dec(ciphertext, session_key)
+    return sym_dec(ciphertext, session_key)
 
 # json
 
@@ -201,11 +221,11 @@ class FakeAccessWrapper(AccessWrapper):
         if data is None: return False
         iv = self.load_file_iv(file_name)
         key = su.key_gen(iv)
-        data = AES_dec(data, key) # decrypt
+        data = sym_dec(data, key) # decrypt
         # create a new iv => new key
         iv = Random.new().read(AES.block_size)
         key = su.key_gen(iv)
-        data = AES_enc(data, key, iv) # re-encrypt
+        data = sym_enc(data, key, iv) # re-encrypt
         self.files[file_name] = data
         time.sleep(self.upload_delay)
         return True
@@ -217,7 +237,7 @@ class FakeAccessWrapper(AccessWrapper):
             data = bytearray([i % 256 for i in range(size)])
         iv = Random.new().read(AES.block_size)
         key = su.key_gen(iv)
-        data_enc = AES_enc(data, key, iv)
+        data_enc = sym_enc(data, key, iv)
         self.files[file_name] = data_enc
         return data, data_enc
 
@@ -235,7 +255,7 @@ class FakeAccessWrapper(AccessWrapper):
             if key is None:
                 return None
 
-        data = AES_dec(data, key)
+        data = sym_dec(data, key)
         return data
 
 class SharingUtility(object):
@@ -311,11 +331,11 @@ class SharingUtility(object):
         if bob_id == None:
             # files Alice share with others
             key = self.k_alice
-            table = AES_dec(table, key)
+            table = sym_dec(table, key)
         else:
             # files >>>Bob<<< share with Alice
             key = self.k_alice_priv
-            table = RSA_dec(table, key)
+            table = asym_dec(table, key)
 
         table = self.access_wrapper.deserialize(table)
         return table
@@ -389,13 +409,13 @@ class SharingUtility(object):
         T_A_others = self.access_wrapper.serialize(T_A_others)
 
         # upload T_A_B
-        T_A_B_enc = RSA_enc(T_A_B, k_bob_pub)
+        T_A_B_enc = asym_enc(T_A_B, k_bob_pub)
         self.upload_table(self.get_table_name(
             alice_id=self.alice_id,
             bob_id=bob_id), T_A_B_enc)
 
         # upload T_A_others
-        T_A_others_enc = AES_enc(T_A_others, self.k_alice)
+        T_A_others_enc = sym_enc(T_A_others, self.k_alice)
         self.upload_table(self.get_table_name(), T_A_others_enc)
 
         return T_A_B, T_A_B_enc, T_A_others, T_A_others_enc
@@ -444,7 +464,7 @@ class SharingUtility(object):
         return None
 
     # revoke bob from accessing a file
-    # k_pub_getter: function(user_id) returns RSA public key
+    # k_pub_getter: function(user_id) returns public key
     def revoke_shared_file(self, file_path, bob_id, k_pub_getter):
         # print(f">>> revoke_shared_file({file_path}, {bob_id}, {k_pub_getter})")
 
@@ -485,13 +505,13 @@ class SharingUtility(object):
         s_T_A_others = self.access_wrapper.serialize(T_A_others)
 
         # upload T_A_B
-        T_A_B_enc = RSA_enc(s_T_A_B, k_pub_getter(bob_id))
+        T_A_B_enc = asym_enc(s_T_A_B, k_pub_getter(bob_id))
         self.upload_table(self.get_table_name(
             alice_id=self.alice_id,
             bob_id=bob_id), T_A_B_enc)
 
         # upload T_A_others
-        T_A_others_enc = AES_enc(s_T_A_others, self.k_alice)
+        T_A_others_enc = sym_enc(s_T_A_others, self.k_alice)
         self.upload_table(self.get_table_name(), T_A_others_enc)
 
         # upload the file
@@ -513,7 +533,7 @@ class SharingUtility(object):
                 # serialize
                 s_T_A_user = self.access_wrapper.serialize(T_A_[user])
                 # upload
-                e_T_A_user = RSA_enc(s_T_A_user, k_pub_getter(user))
+                e_T_A_user = asym_enc(s_T_A_user, k_pub_getter(user))
                 self.upload_table(self.get_table_name(
                     alice_id=self.alice_id,
                     bob_id=user), e_T_A_user)
