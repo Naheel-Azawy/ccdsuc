@@ -267,6 +267,11 @@ class ShareFS(CryptoFS):
         s.bind(("localhost", 0))
         s.listen(1)
         port = s.getsockname()[1]
+        try: # so that clients can connect easier
+            with open("/tmp/sharing-fs-port", "w") as f:
+                f.write(str(port))
+        except:
+            pass
         print(f"Server started at :{port}")
         while running:
             conn, addr = s.accept()

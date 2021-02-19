@@ -2,19 +2,33 @@ import socket
 
 def usage():
     print("Allowed commands:")
-    print("<PORT> share     <FILE_PATH> <USER>")
-    print("<PORT> revoke    <FILE_PATH> <USER>")
-    print("<PORT> ls-shares <FILE_PATH>")
+    print("[PORT] share     <FILE_PATH> <USER>")
+    print("[PORT] revoke    <FILE_PATH> <USER>")
+    print("[PORT] ls-shares <FILE_PATH>")
 
 def main(args):
     args = args[1:]
-    if len(args) not in [3, 4]:
+
+    try:
+        port = int(args[0])
+        i = 0
+    except:
+        try:
+            with open("/tmp/sharing-fs-port", "r") as f:
+                port = int(f.read())
+                # print(f"last port found {port}")
+                i = 1
+        except:
+            print("ERROR: no port provided")
+            return
+
+    if len(args) + i not in [3, 4]:
         usage()
         return
-    port      = int(args[0])
-    cmd       = args[1]
-    file_path = args[2]
-    bob       = args[3] if len(args) == 4 else None
+
+    cmd       = args[1 - i]
+    file_path = args[2 - i]
+    bob       = args[3 - i] if len(args) == (4 - i) else None
     if cmd not in ["share", "revoke", "ls-shares"]:
         usage()
         return

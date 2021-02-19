@@ -1,12 +1,19 @@
 """BlockChain PKI. Intefaces with the CA"""
 
-from public_key.pki_base  import PKI
-from public_key.pki_bc_ca import CA
-from core.sharing         import gen_keys_from, stringify_keys, PublicKey
+from public_key.pki_base import PKI
+from core.sharing        import gen_keys_from, stringify_keys, PublicKey
+
+import subprocess
+import time
+import re
+
+GANACHE = "ganache-cli --host 0.0.0.0 --port 8545"
+DEPLOY  = "cd ./public_key/bcpki && truffle migrate --compile-all --reset"
 
 class BCPKI(PKI):
     """BlockChain PKI"""
     def init(self):
+        from public_key.pki_bc_ca import CA
         self.ca = CA()
         self.ca.connect()
 
@@ -57,12 +64,13 @@ def main(args):
         print(" $ export ETH_ADDR='http://<IP>:<PORT>@<CONTRACT_ADDRESS>'")
         print("")
         print("COMMANDS:")
-        print("  deploy")
-        print("  ls")
-        print("  certs")
-        print("  get <ID>")
-        print("  add <ID> <PASSPHRASE> <VALID_TO>")
-        print("  revoke <ID>")
+        print("  deploy        deploy truffle contracts")
+        print("  demo          start ganache, deploy, and add demo users")
+        print("  ls            list IDs")
+        print("  certs         list certificates")
+        print("  get <ID>      get the user's public key")
+        print("  add <ID> <PASSPHRASE> <VALID_TO> enroll a new user")
+        print("  revoke <ID>   revoke a user")
 
     if len(args) < 2:
         usage()
@@ -102,7 +110,49 @@ def main(args):
         pki.init()
         print(json.dumps(pki.ca.get_certs(), indent=2))
     elif cmd == "deploy":
-        os.system("cd ./public_key/bcpki && truffle migrate --compile-all --reset")
+        os.system(DEPLOY)
+    elif cmd == "demo":
+        # start ganache in the background
+        os.system(GANACHE + " &")
+        time.sleep(5)
+
+        # deploy
+        popen = subprocess.Popen(["sh", "-c", DEPLOY],
+                                 stdout=subprocess.PIPE,
+                                 universal_newlines=True)
+        deploying_ca = False
+        ca_address = None
+        for line in iter(popen.stdout.readline, ""):
+            if "Deploying 'CA'" in line:
+                deploying_ca = True
+            elif deploying_ca and "contract address:" in line:
+                ca_address = line.strip()
+            print("truffle: " + line.rstrip())
+
+        try:
+            ca_address = re.search('.+:\s+(.+)', ca_address).group(1)
+        except:
+            ca_address = None
+
+        print("")
+        if ca_address is None:
+            print("failed finding the contract address")
+        else:
+            addr = f"http://localhost:8545@{ca_address}"
+            os.environ["ETH_ADDR"] = addr
+
+            # add demo users
+            pki = BCPKI()
+            pki.init()
+            users = [("alice", "123"), ("bob", "abc"),
+                     ("piled", "led"), ("pildr", "ldr"),
+                     ("naheel", "deadbeef"), ("notnaheel", "foobar")]
+            for u in users:
+                print(f">>> adding user {u}...")
+                print(pki.enroll(u[0], u[1], "3030-03-03"))
+
+            print("export the contract address as follows:")
+            print(f"$ export ETH_ADDR='{addr}'")
     elif cmd == "keys-pv":
         if len(args) < 1:
             usage()
