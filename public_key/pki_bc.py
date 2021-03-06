@@ -52,6 +52,25 @@ class BCPKI(PKI):
                 return self.ca.revoke(cert)
         return None
 
+def deploy():
+    popen = subprocess.Popen(["sh", "-c", DEPLOY],
+                             stdout=subprocess.PIPE,
+                             universal_newlines=True)
+    deploying_ca = False
+    ca_address = None
+    for line in iter(popen.stdout.readline, ""):
+        if "Deploying 'CA'" in line:
+            deploying_ca = True
+        elif deploying_ca and "contract address:" in line:
+            ca_address = line.strip()
+        print("truffle: " + line.rstrip())
+
+    try:
+        ca_address = re.search('.+:\s+(.+)', ca_address).group(1)
+        return f"http://localhost:8545@{ca_address}"
+    except:
+        return None
+
 def main(args):
     import os
     import json
@@ -110,35 +129,24 @@ def main(args):
         pki.init()
         print(json.dumps(pki.ca.get_certs(), indent=2))
     elif cmd == "deploy":
-        os.system(DEPLOY)
+        addr = deploy()
+        if addr is None:
+            print("failed finding the contract address")
+        else:
+            print("export the contract address as follows:")
+            print(f"$ export ETH_ADDR='{addr}'")
     elif cmd == "demo":
         # start ganache in the background
         os.system(GANACHE + " &")
         time.sleep(5)
 
         # deploy
-        popen = subprocess.Popen(["sh", "-c", DEPLOY],
-                                 stdout=subprocess.PIPE,
-                                 universal_newlines=True)
-        deploying_ca = False
-        ca_address = None
-        for line in iter(popen.stdout.readline, ""):
-            if "Deploying 'CA'" in line:
-                deploying_ca = True
-            elif deploying_ca and "contract address:" in line:
-                ca_address = line.strip()
-            print("truffle: " + line.rstrip())
-
-        try:
-            ca_address = re.search('.+:\s+(.+)', ca_address).group(1)
-        except:
-            ca_address = None
+        addr = deploy()
 
         print("")
-        if ca_address is None:
+        if addr is None:
             print("failed finding the contract address")
         else:
-            addr = f"http://localhost:8545@{ca_address}"
             os.environ["ETH_ADDR"] = addr
 
             # add demo users
