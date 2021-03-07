@@ -15,6 +15,6 @@ test_plot_2(xdata1, ydata1, xdata2, ydata2, ...
             'Revocation time for different number of users', ...
             'Revocation time in milliseconds')
 
-saveas(gca, "./benchmarks/test_sharing_revocation.png");
+saveas(gca, "./benchmarks/test_sharing_revocation.pdf");
 
 %% waitfor(p);

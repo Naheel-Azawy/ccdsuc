@@ -81,7 +81,107 @@ def tables_size_benchmark():
 
         bobs = [None] * U
         for u in range(len(bobs)):
-            bobs[u] = SharingUtility(f"U{u}", "123", access_wrapper=aw)
+            bobs[u] = SharingUtility(f"B{u:03}", "123", access_wrapper=aw)
+
+        res = ""
+        for N in tqdm(range(0, 101)):
+            # 16 bytes = 32 bytes hex str = 256 bits file name
+            f = secrets.token_bytes(16).hex()
+            aw.fake_file(alice, f, size=4) # keep it tiny
+            for bob in bobs:
+                alice.share_file(f, bob.user_id, bob.keys["pub"])
+            full_size = aw.storage_size()
+            overhead = aw.storage_cost()
+            percent = (overhead / full_size) * 100
+            res += f"{N},{overhead},{full_size},{percent}\n"
+
+        with open(p, "w") as f:
+            f.write(res)
+
+    print("** RUNNING U VS COST")
+    p = "./testing/benchmarks/test_sharing_U_vs_cost.csv"
+    if os.path.exists(p):
+        print(f"{p} already exist")
+    else:
+        N = 1
+
+        # to save time of key generation
+        alice = SharingUtility("alice", "abc", access_wrapper=aw)
+        bob = SharingUtility(f"bob", "123", access_wrapper=aw)
+
+        res = ""
+        for U in tqdm(range(0, 101)):
+            aw = FakeAccessWrapper(use_json=False)
+            f = secrets.token_bytes(16).hex()
+            aw.fake_file(alice, f, size=4)
+
+            alice = SharingUtility("alice", None, alice.keys["sym"], alice.keys["pub"], alice.keys["priv"], access_wrapper=aw)
+
+            bobs = [None] * U
+            for u in range(len(bobs)):
+                bobs[u] = SharingUtility(f"B{u:03}", None, bob.keys["sym"], bob.keys["pub"], bob.keys["priv"], access_wrapper=aw)
+                alice.share_file(f, bobs[u].user_id, bobs[u].keys["pub"])
+
+            full_size = aw.storage_size()
+            overhead = aw.storage_cost()
+            percent = (overhead / full_size) * 100
+            res += f"{U},{overhead},{full_size},{percent}\n"
+
+        with open(p, "w") as f:
+            f.write(res)
+
+def overhead_percent_benchmark():
+    print("* Overhead percent vs files sizes")
+
+    p = "./testing/benchmarks/test_overhead_percent.csv"
+    if os.path.exists(p):
+        print(f"{p} already exist")
+    else:
+        x = 10
+        y = 10
+        aw = FakeAccessWrapper(use_json=False)
+        alice = SharingUtility("alice", "abc", access_wrapper=aw)
+
+        U = x
+        bobs = [None] * U
+        for u in range(len(bobs)):
+            bobs[u] = SharingUtility(f"B{u:03}", "123", access_wrapper=aw)
+
+        res = ""
+        for fsize in tqdm(range(0, 512 * 1024, 4096)):
+
+            for N in range(0, y):
+                # 16 bytes = 32 bytes hex str = 256 bits file name
+                f = secrets.token_bytes(16).hex()
+                aw.fake_file(alice, f, size=fsize)
+                for bob in bobs:
+                    alice.share_file(f, bob.user_id, bob.keys["pub"])
+                full_size = aw.storage_size()
+
+            overhead = aw.storage_cost()
+            percent = (overhead / full_size) * 100
+            res += f"{fsize},{overhead},{full_size},{percent}\n"
+            aw.cleanup()
+
+        with open(p, "w") as f:
+            f.write(res)
+
+def tables_size_benchmark_foo():
+    print("* Tables storage cost benchmark")
+
+    print("** RUNNING N VS COST")
+    p = "./testing/benchmarks/test_sharing_N_vs_cost.csv"
+    if os.path.exists(p):
+        print(f"{p} already exist")
+    else:
+        U = 1
+
+        aw = FakeAccessWrapper(use_json=False)
+        alice = SharingUtility("alice", "abc", access_wrapper=aw)
+
+        bobs = [None] * U
+        for u in range(len(bobs)):
+            bobs[u] = SharingUtility(f"B{u:03}", "123", access_wrapper=aw)
 
         res = ""
         for N in tqdm(range(1, 101)):
@@ -107,8 +207,8 @@ def tables_size_benchmark():
         bob = SharingUtility(f"bob", "123", access_wrapper=aw)
 
         res = ""
-        for U in tqdm(range(1, 101)):
-            aw = FakeAccessWrapper(use_json=False)
+        for U in tqdm(range(1, 2)):
+            aw = FakeAccessWrapper(use_json=True)
             f = secrets.token_bytes(16).hex()
             aw.fake_file(alice, f, size=4)
 
@@ -116,9 +216,31 @@ def tables_size_benchmark():
 
             bobs = [None] * U
             for u in range(len(bobs)):
-                bobs[u] = SharingUtility(f"U{u}", None, bob.keys["sym"], bob.keys["pub"], bob.keys["priv"], access_wrapper=aw)
+                bobs[u] = SharingUtility(f"B{u:03}", None, bob.keys["sym"], bob.keys["pub"], bob.keys["priv"], access_wrapper=aw)
+                print(f">>> sharing with {bobs[u].user_id}...")
                 alice.share_file(f, bobs[u].user_id, bobs[u].keys["pub"])
 
+            print(f">>> shared with {U} users")
+            for t in aw.tables:
+                b = t.split("_")[-1]
+                if b == "others":
+                    b = alice
+                    t_dec = alice.load_table()
+                else:
+                    b = int(b[1:])
+                    b = bobs[b]
+                    t_dec = b.load_table("alice")
+                t_s = aw.serialize(t_dec)
+                if b == alice:
+                    t_enc = sym_enc(t_s, alice.keys["sym"])
+                else:
+                    t_enc = asym_enc_v(t_s, b.keys["pub"])
+                print(f"{t}: {len(aw.tables[t])}, {len(t_s)}, {len(t_enc)}, b: {b.user_id}")
+                print(t_dec)
+                print(t_s)
+                print()
+            print(f"cost = {aw.storage_cost()}")
+            print("======================================")
             res += f"{U},{aw.storage_cost()}\n"
 
         with open(p, "w") as f:
@@ -505,9 +627,11 @@ def main(args):
             return
         if not os.path.isdir(out):
             os.mkdir(out)
-        speed_benchmark()
-        tables_size_benchmark()
-        revocation_benchmark()
+        #speed_benchmark()
+        #tables_size_benchmark()
+        #revocation_benchmark()
+        #tables_size_benchmark_foo()
+        overhead_percent_benchmark()
         return
     #tables_json_vs_pickle()
     #tables_test()
@@ -520,4 +644,4 @@ def main(args):
     #simple_keys_test()
     #server_test()
     #reupload_test()
-    revocation_test()
+    #revocation_test()

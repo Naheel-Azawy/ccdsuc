@@ -98,6 +98,20 @@ def asym_enc(data, key):
     ciphertext = sym_enc(data, session_key)
     return session_key_enc + ciphertext
 
+def asym_enc_v(data, key):
+    session_key = secrets.token_bytes(nbytes=int(AES.key_size[-1]))
+    print(f"++ session_key: {len(session_key)}")
+
+    # Encrypt the session key with the public key
+    cipher_pub = PKCS1_OAEP.new(key)
+    session_key_enc = cipher_pub.encrypt(session_key)
+    print(f"++ session_key_enc: {len(session_key_enc)}")
+
+    # Encrypt the data with the AES session key
+    ciphertext = sym_enc(data, session_key)
+    print(f"++ plaintext: {len(data)}, ciphertext: {len(ciphertext)}")
+    return session_key_enc + ciphertext
+
 def asym_dec(data, key):
     session_key_enc = data[:AES.key_size[-1] * 8]
     ciphertext = data[AES.key_size[-1] * 8:]
@@ -145,7 +159,10 @@ def unpicklize(b):
 class AccessWrapper(object):
     use_json = False
 
-    def storage_cost(self):
+    def storage_size(self):
+        return 0
+
+    def storage_cost(self): # i.e. storage overhead
         return 0
 
     def list_tables(self):
@@ -188,10 +205,20 @@ class FakeAccessWrapper(AccessWrapper):
         self.tables = {}
         self.files  = {}
 
+    def storage_size(self):
+        res = 0
+        for t in self.tables:
+            res += len(self.tables[t])
+        for f in self.files:
+            res += len(self.files[f])
+        return res
+
     def storage_cost(self):
         res = 0
         for t in self.tables:
             res += len(self.tables[t])
+        for f in self.files:
+            res += block_size # S(IV)
         return res
 
     def list_tables(self):
@@ -257,6 +284,10 @@ class FakeAccessWrapper(AccessWrapper):
 
         data = sym_dec(data, key)
         return data
+
+    def cleanup(self):
+        self.tables = {}
+        self.files = {}
 
 class SharingUtility(object):
     def __init__(self, user_id, passphrase=None, k_sym=None, k_pub=None, k_priv=None, access_wrapper=None, keys_cache=None):

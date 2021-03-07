@@ -19,7 +19,7 @@ commands = {
                      "public_key.pki_bc"),
     "fs-mount": Command("mount sharing filesystem <root> to <mount>",
                         "fs.sharing_fs"),
-    "fs-cmd": Command("Execute a command on a mounted fs",
+    "fs-cmd": Command("execute a command on a mounted fs",
                         "fs.sharing_fs_client"),
     "iot-server": Command("start the sample TCP server",
                           "iot.tcp_server"),
@@ -32,7 +32,9 @@ commands = {
     "iot-act-led": Command("LED with raspberry pi",
                            "iot.device_actuator_led"),
     "test": Command("run the test functions",
-                    "testing.test")
+                    "testing.test"),
+    "test2": Command("run the test functions",
+                     "testing.test2")
 }
 
 def usage():

@@ -24,4 +24,4 @@ ylabel("Time in milliseconds");
 legend("Encryption time",
        "Decryption time");
 
-saveas(p, "./benchmarks/test_sharing_speed.png");
+saveas(p, "./benchmarks/test_sharing_speed.pdf");
