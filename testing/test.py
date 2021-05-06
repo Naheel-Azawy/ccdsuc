@@ -130,6 +130,55 @@ def tables_size_benchmark():
         with open(p, "w") as f:
             f.write(res)
 
+def tables_size_3d_benchmark():
+    print("* Storage overhead cost benchmark")
+
+    p = "./testing/benchmarks/test_sharing_cost_overhead.csv"
+    if os.path.exists(p):
+        print(f"{p} already exist")
+    else:
+        # to save time of key generation
+        alice = SharingUtility("alice", "abc")
+        bob = SharingUtility(f"bob", "123")
+
+        res = ""
+
+        step = 10
+        for y in tqdm(range(0, 101, step)):
+            for x in tqdm(range(0, 101, step)):
+                aw = FakeAccessWrapper(use_json=False)
+
+                alice = SharingUtility("alice", None,      \
+                                       alice.keys["sym"],  \
+                                       alice.keys["pub"],  \
+                                       alice.keys["priv"], \
+                                       access_wrapper=aw)
+
+                files = [None] * x
+                bobs  = [None] * y
+
+                for f in range(len(files)):
+                    # 16 bytes = 32 bytes hex str = 256 bits file name
+                    files[f] = secrets.token_bytes(16).hex()
+                    aw.fake_file(alice, files[f], size=4) # keep it tiny
+
+                for u in range(len(bobs)):
+                    bobs[u] = SharingUtility(f"B{u:03}", None, \
+                                             bob.keys["sym"],  \
+                                             bob.keys["pub"],  \
+                                             bob.keys["priv"], \
+                                             access_wrapper=aw)
+
+                for u in range(len(bobs)):
+                    for f in range(len(files)):
+                        alice.share_file(files[f], bobs[u].user_id, bobs[u].keys["pub"])
+
+                o = aw.storage_cost()
+                res += f"{x},{y},{o}\n"
+
+        with open(p, "w") as f:
+            f.write(res)
+
 def overhead_percent_benchmark():
     print("* Overhead percent vs files sizes")
 
@@ -142,7 +191,7 @@ def overhead_percent_benchmark():
         aw = FakeAccessWrapper(use_json=False)
         alice = SharingUtility("alice", "abc", access_wrapper=aw)
 
-        U = x
+        U = y
         bobs = [None] * U
         for u in range(len(bobs)):
             bobs[u] = SharingUtility(f"B{u:03}", "123", access_wrapper=aw)
@@ -150,7 +199,7 @@ def overhead_percent_benchmark():
         res = ""
         for fsize in tqdm(range(0, 512 * 1024, 4096)):
 
-            for N in range(0, y):
+            for N in range(0, x):
                 # 16 bytes = 32 bytes hex str = 256 bits file name
                 f = secrets.token_bytes(16).hex()
                 aw.fake_file(alice, f, size=fsize)
@@ -631,7 +680,8 @@ def main(args):
         #tables_size_benchmark()
         #revocation_benchmark()
         #tables_size_benchmark_foo()
-        overhead_percent_benchmark()
+        #overhead_percent_benchmark()
+        tables_size_3d_benchmark()
         return
     #tables_json_vs_pickle()
     #tables_test()

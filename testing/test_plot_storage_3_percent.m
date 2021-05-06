@@ -8,6 +8,6 @@ y = data(:,4);
 plot(x, y);
 grid on;
 xlabel("File size (KB)")
-ylabel("Storage overhead to the total storage (%)")
+ylabel("Storage overhead (% of total storage)")
 
 saveas(gca, "./benchmarks/test_overhead_percent.pdf");
