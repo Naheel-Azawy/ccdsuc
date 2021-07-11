@@ -2,13 +2,13 @@
   A key management scheme for encrypted data sharing.
 
   *Commands:*
-  | commands      | list the below commands                      |
-  | bcpki         | control BlockChain Public Key Infrastructure |
-  | fs-mount      | mount sharing filesystem <root> to <mount>   |
-  | fs-cmd        | execute a command on a mounted fs            |
-  | iot-server    | start the sample TCP server                  |
-  | iot-sens-fake | fake sensor                                  |
-  | iot-act-fake  | fake actuator                                |
-  | iot-sens-ldr  | LDR sensor with raspberry pi                 |
-  | iot-act-led   | LED with raspberry pi                        |
+  | commands     | list the below commands                      |
+  | bcpki        | control BlockChain Public Key Infrastructure |
+  | fs-mount     | mount sharing filesystem <root> to <mount>   |
+  | fs-cmd       | execute a command on a mounted fs            |
+  | iot-server   | start the sample TCP server                  |
+  | iot-sens-sim | fake sensor                                  |
+  | iot-act-sim  | fake actuator                                |
+  | iot-sens-ldr | LDR sensor with raspberry pi                 |
+  | iot-act-led  | LED with raspberry pi                        |
 

@@ -1,0 +1,4 @@
+pycryptodome
+fusepy
+web3
+tqdm

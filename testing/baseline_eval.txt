@@ -1,3 +1,7 @@
+Comparision with:
+[6] J. Li, L. Chen, Y. Lu, and Y. Zhang, “Anonymous certiﬁcate-based broadcast encryption with constant decryption cost,” Information Sciences, vol. 454, pp. 110–127, 2018.
+[4] Q. Malluhi, V. D. Tran, and V. C. Trinh, “Decentralized broadcast encryption schemes with constant size ciphertext and fast decryption,” Symmetry, vol. 12, no. 6, p. 969, 2020.
+
 $y,r$      &  Enc. & Dec. & Storage & Enc. & Dec. & Storage & Enc.  & Dec.  & Storage \\
 
 $100,10$   & 13.59 & 3.23 &   6.695 & 2.64 & 1.98 &   71.76 & 0.048 & 0.038 &  40.192 \\

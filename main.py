@@ -32,9 +32,7 @@ commands = {
     "iot-act-led": Command("LED with raspberry pi",
                            "iot.device_actuator_led"),
     "test": Command("run the test functions",
-                    "testing.test"),
-    "test2": Command("run the test functions",
-                     "testing.test2")
+                    "testing.test")
 }
 
 def usage():

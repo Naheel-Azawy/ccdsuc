@@ -668,6 +668,19 @@ def revocation_test():
     print(f_shared_data == f_data)
     print("** Loaded foo.txt = " + str(f_shared_data))
 
+def keygen_benchmark():
+    su = SharingUtility("alice", "123")
+    iv = Random.new().read(block_size)
+    dur = 0
+    times = 100
+    for _ in range(times):
+        start = time.time()
+        key = su.key_gen(iv)
+        end = time.time()
+        dur += (end - start) * 1000 * 1000
+    dur /= times
+    print(f"{dur}ns")
+
 def main(args):
     if len(args) > 1 and args[1] == "benchmark":
         out = "./testing/benchmarks"
@@ -676,14 +689,14 @@ def main(args):
             return
         if not os.path.isdir(out):
             os.mkdir(out)
-        #speed_benchmark()
-        #tables_size_benchmark()
-        #revocation_benchmark()
-        #tables_size_benchmark_foo()
-        #overhead_percent_benchmark()
+        speed_benchmark()
+        tables_size_benchmark()
+        revocation_benchmark()
+        tables_size_benchmark_foo()
+        overhead_percent_benchmark()
         tables_size_3d_benchmark()
         return
-    #tables_json_vs_pickle()
+    tables_json_vs_pickle()
     #tables_test()
     #sharing_test()
     #sym_test()
@@ -695,3 +708,4 @@ def main(args):
     #server_test()
     #reupload_test()
     #revocation_test()
+    #keygen_benchmark()
