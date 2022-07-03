@@ -1,0 +1,1 @@
+- [[https://ieeexplore.ieee.org/abstract/document/9595517][N. F. Kamal and Q. Malluhi, "Client-Based Secure IoT Data Sharing using Untrusted Clouds," 2021 IEEE 7th World Forum on Internet of Things (WF-IoT), 2021, pp. 409-414, doi: 10.1109/WF-IoT51360.2021.9595517.]]
